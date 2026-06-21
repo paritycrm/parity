@@ -1,11 +1,27 @@
 // Auto-generated defaults — regenerate by running the "Save current as defaults" action.
 // Keep in sync with the Prisma schema defaults for SystemSettings.
 
+const DEFAULT_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 120" width="440" height="120">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;800&amp;display=swap');
+      .wordmark { font-family: 'Montserrat', Arial, sans-serif; font-weight: 800; }
+      .sub { font-family: 'Montserrat', Arial, sans-serif; font-weight: 400; }
+    </style>
+  </defs>
+  <rect x="24" y="18" width="32" height="70" rx="8" fill="#F7F3EC"/>
+  <rect x="64" y="18" width="32" height="70" rx="8" fill="#F7F3EC"/>
+  <rect x="24" y="93" width="72" height="4" rx="2" fill="#52796F"/>
+  <text x="118" y="70" class="wordmark" font-size="52" fill="#F7F3EC" letter-spacing="-1">PARITY</text>
+  <text x="120" y="94" class="sub" font-size="16" fill="#52796F" letter-spacing="10">CRM</text>
+</svg>`;
+
+export const DEFAULT_LOGO_DATA_URL = `data:image/svg+xml;base64,${typeof btoa !== "undefined" ? btoa(DEFAULT_LOGO_SVG) : Buffer.from(DEFAULT_LOGO_SVG).toString("base64")}`;
+
 export const DEFAULT_BRANDING = {
   orgName: "Parity CRM",
   primaryColour: "#C9A84C",
   sidebarColour: "#1b3a2d",
   sidebarTextColour: "#f7f3ec",
-  logoUrl:
-    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDAgMTIwIiB3aWR0aD0iNDQwIiBoZWlnaHQ9IjEyMCI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIEBpbXBvcnQgdXJsKCdodHRwczovL2ZvbnRzLmdvb2dsZWFwaXMuY29tL2NzczI/ZmFtaWx5PU1vbnRzZXJyYXQ6d2dodEA0MDA7ODAwJmFtcDtkaXNwbGF5PXN3YXAnKTsKICAgICAgLndvcmRtYXJrIHsgZm9udC1mYW1pbHk6ICdNb250c2VycmF0JywgQXJpYWwsIHNhbnMtc2VyaWY7IGZvbnQtd2VpZ2h0OiA4MDA7IH0KICAgICAgLnN1YiB7IGZvbnQtZmFtaWx5OiAnTW9udHNlcnJhdCcsIEFyaWFsLCBzYW5zLXNlcmlmOyBmb250LXdlaWdodDogNDAwOyB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8IS0tIFBpbGxhciBMZWZ0IC0tPgogIDxyZWN0IHg9IjI0IiB5PSIxOCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjcwIiByeD0iOCIgZmlsbD0iI0Y3RjNFQyIvPgogIDwhLS0gUGlsbGFyIFJpZ2h0IC0tPgogIDxyZWN0IHg9IjY0IiB5PSIxOCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjcwIiByeD0iOCIgZmlsbD0iI0Y3RjNFQyIvPgogIDwhLS0gQmFzZSBydWxlIC0tPgogIDxyZWN0IHg9IjI0IiB5PSI5MyIgd2lkdGg9IjcyIiBoZWlnaHQ9IjQiIHJ4PSIyIiBmaWxsPSIjNTI3OTZGIi8+CiAgPCEtLSBQQVJJVFkgd29yZG1hcmsgLS0+CiAgPHRleHQgeD0iMTE4IiB5PSI3MCIgY2xhc3M9IndvcmRtYXJrIiBmb250LXNpemU9IjUyIiBmaWxsPSIjRjdGM0VDIiBsZXR0ZXItc3BhY2luZz0iLTEiPlBBUklUWTwvdGV4dD4KICA8IS0tIENSTSBzdWIgLS0+CiAgPHRleHQgeD0iMTIwIiB5PSI5NCIgY2xhc3M9InN1YiIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzUyNzk2RiIgbGV0dGVyLXNwYWNpbmc9IjEwIj5DUk08L3RleHQ+Cjwvc3ZnPgo=",
+  logoUrl: DEFAULT_LOGO_DATA_URL,
 } as const;
