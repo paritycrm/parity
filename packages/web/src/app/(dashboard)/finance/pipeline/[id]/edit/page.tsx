@@ -48,7 +48,7 @@ export default async function EditOpportunityPage({
       name: true,
       email: true,
     },
-    where: { isArchived: false, role: { in: ["ADMIN", "STAFF"] } },
+    where: { role: { in: ["ADMIN", "STAFF"] } },
     orderBy: { name: "asc" },
   });
 

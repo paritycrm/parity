@@ -30,7 +30,7 @@ export default async function NewOpportunityPage() {
       name: true,
       email: true,
     },
-    where: { isArchived: false, role: { in: ["ADMIN", "STAFF"] } },
+    where: { role: { in: ["ADMIN", "STAFF"] } },
     orderBy: { name: "asc" },
   });
 

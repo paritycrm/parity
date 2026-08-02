@@ -4,10 +4,9 @@ import { getSession } from "@/lib/session";
 import { hashPassword } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UserCog, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { logAudit } from "@/lib/audit";
 import { ConfirmButton } from "@/components/ui/confirm-button";
@@ -36,7 +35,6 @@ export default async function UserManagementPage({
             }
           : {},
         roleFilter ? { role: roleFilter } : {},
-        { isArchived: false },
       ],
     },
     include: {
@@ -67,34 +65,7 @@ export default async function UserManagementPage({
     if (!email || !name || !password) return;
 
     const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      // If archived, restore them with the new details
-      if (existing.isArchived) {
-        const passwordHash = await hashPassword(password);
-        await prisma.user.update({
-          where: { id: existing.id },
-          data: {
-            name,
-            role,
-            passwordHash,
-            contactId: contactId || null,
-            isArchived: false,
-            archivedAt: null,
-          },
-        });
-        await logAudit({
-          userId: s.id,
-          action: "UPDATE",
-          entityType: "User",
-          entityId: existing.id,
-          details: { email, role, name, restored: true },
-        });
-        revalidatePath("/settings/users");
-        return;
-      }
-      // Already active — skip
-      return;
-    }
+    if (existing) return; // email already in use
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
@@ -142,17 +113,19 @@ export default async function UserManagementPage({
     revalidatePath("/settings/users");
   }
 
-  async function archiveUser(formData: FormData) {
+  async function resetPassword(formData: FormData) {
     "use server";
     const s = await getSession();
     if (!s || s.role !== "ADMIN") redirect("/");
 
     const userId = formData.get("userId") as string;
-    if (userId === s.id) return; // can't archive yourself
+    const newPassword = (formData.get("newPassword") as string).trim();
+    if (!newPassword || newPassword.length < 6) return;
 
+    const passwordHash = await hashPassword(newPassword);
     await prisma.user.update({
       where: { id: userId },
-      data: { isArchived: true, archivedAt: new Date() },
+      data: { passwordHash },
     });
 
     await logAudit({
@@ -160,7 +133,85 @@ export default async function UserManagementPage({
       action: "UPDATE",
       entityType: "User",
       entityId: userId,
-      details: { archived: true },
+      details: { passwordReset: true },
+    });
+
+    revalidatePath("/settings/users");
+  }
+
+  async function deleteUser(formData: FormData) {
+    "use server";
+    const s = await getSession();
+    if (!s || s.role !== "ADMIN") redirect("/");
+
+    const userId = formData.get("userId") as string;
+    if (userId === s.id) return; // can't delete yourself
+
+    // Reassign all records created by this user to the admin performing the delete,
+    // then delete the user in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Reassign required createdById references
+      const tables = [
+        "Contact", "Interaction", "Note", "Assignment", "Broadcast",
+        "Reminder", "GiftAid", "Donation", "Event", "Campaign",
+        "CollectionTin", "TributeFund", "Dpia", "DataBreach",
+        "SubjectAccessRequest", "ConsentRecord", "EmailProvider",
+        "PaymentProvider", "Form", "Grant", "Legacy", "CaseRecord",
+        "GiftAidClaim", "Shop", "CollectionRoute", "CollectionRun",
+        "AutomationRule", "EmailTemplate", "SavedReport",
+        "DonorOpportunity", "ReconciliationSession", "GasdsClaim",
+        "PartnershipActivity", "SavedSegment", "DonationImport",
+        "Pledge", "BoardReport", "FinancialReport", "Webhook",
+        "BankDocument",
+      ];
+
+      for (const table of tables) {
+        await tx.$executeRawUnsafe(
+          `UPDATE "${table}" SET "createdById" = $1 WHERE "createdById" = $2`,
+          s.id,
+          userId
+        );
+      }
+
+      // Reassign audit logs
+      await tx.$executeRawUnsafe(
+        `UPDATE "AuditLog" SET "userId" = $1 WHERE "userId" = $2`,
+        s.id,
+        userId
+      );
+
+      // Nullify optional references
+      const nullableTables = [
+        { table: "VolunteerHoursLog", col: "verifiedById" },
+        { table: "BroadcastResponse", col: "confirmedById" },
+        { table: "VolunteerSkill", col: "verifiedById" },
+        { table: "VolunteerTraining", col: "verifiedById" },
+        { table: "SubjectAccessRequest", col: "assignedToId" },
+        { table: "CaseRecord", col: "assignedToId" },
+        { table: "DonorOpportunity", col: "assignedToId" },
+        { table: "TaskRule", col: "assigneeId" },
+        { table: "AutoTask", col: "assigneeId" },
+        { table: "TinReturn", col: "countedById" },
+        { table: "GiftAidClaim", col: "submittedById" },
+      ];
+
+      for (const { table, col } of nullableTables) {
+        await tx.$executeRawUnsafe(
+          `UPDATE "${table}" SET "${col}" = NULL WHERE "${col}" = $1`,
+          userId
+        );
+      }
+
+      // Delete the user (cascades sessions, notifications, etc.)
+      await tx.user.delete({ where: { id: userId } });
+    });
+
+    await logAudit({
+      userId: s.id,
+      action: "DELETE",
+      entityType: "User",
+      entityId: userId,
+      details: { deleted: true },
     });
 
     revalidatePath("/settings/users");
@@ -181,13 +232,6 @@ export default async function UserManagementPage({
 
     revalidatePath("/settings/users");
   }
-
-  const roleColors: Record<string, string> = {
-    ADMIN: "bg-red-100 text-red-800",
-    STAFF: "bg-blue-100 text-blue-800",
-    VOLUNTEER: "bg-green-100 text-green-800",
-    DONOR: "bg-amber-100 text-amber-800",
-  };
 
   return (
     <div className="space-y-6">
@@ -291,6 +335,7 @@ export default async function UserManagementPage({
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Linked Contact</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Password</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -342,16 +387,32 @@ export default async function UserManagementPage({
                         </form>
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      <form action={resetPassword} className="flex items-center gap-2">
+                        <input type="hidden" name="userId" value={user.id} />
+                        <input
+                          name="newPassword"
+                          type="password"
+                          placeholder="New password"
+                          minLength={6}
+                          required
+                          className="rounded border border-gray-300 px-2 py-1 text-xs w-28"
+                        />
+                        <button type="submit" className="text-xs text-indigo-600 hover:text-indigo-800">
+                          Reset
+                        </button>
+                      </form>
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {user.id !== session.id && (
-                        <form action={archiveUser}>
+                        <form action={deleteUser}>
                           <input type="hidden" name="userId" value={user.id} />
                           <ConfirmButton
-                            message={`Archive ${user.name}? They will no longer be able to log in.`}
+                            message={`Delete ${user.name}? Their records will be reassigned to you. This cannot be undone.`}
                             variant="destructive"
                             size="sm"
                           >
-                            Archive
+                            Delete
                           </ConfirmButton>
                         </form>
                       )}
