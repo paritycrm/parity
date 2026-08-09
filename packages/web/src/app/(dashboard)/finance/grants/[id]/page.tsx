@@ -267,6 +267,15 @@ export default async function GrantDetailPage({
     revalidatePath(`/finance/grants/${id}`);
   }
 
+  async function deleteComment(formData: FormData) {
+    "use server";
+    await requireAuth();
+    const commentId = formData.get("commentId") as string;
+    await prisma.grantCommentMention.deleteMany({ where: { commentId } });
+    await prisma.grantComment.delete({ where: { id: commentId } });
+    revalidatePath(`/finance/grants/${id}`);
+  }
+
   // ─── Requirement Actions ───
 
   async function addRequirement(formData: FormData) {
@@ -733,6 +742,7 @@ export default async function GrantDetailPage({
                   currentUserId={session.id}
                   addCommentAction={addComment}
                   sendEmailAction={sendGrantEmail}
+                  deleteCommentAction={deleteComment}
                 />
               ),
 

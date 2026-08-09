@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
-import { Send, Mail, Paperclip, X } from "lucide-react";
+import { Send, Mail, Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface TeamMember {
@@ -31,6 +31,7 @@ export function GrantComments({
   currentUserId,
   addCommentAction,
   sendEmailAction,
+  deleteCommentAction,
 }: {
   comments: Comment[];
   grantId: string;
@@ -40,6 +41,7 @@ export function GrantComments({
   currentUserId: string;
   addCommentAction: (formData: FormData) => Promise<void>;
   sendEmailAction: (formData: FormData) => Promise<void>;
+  deleteCommentAction: (formData: FormData) => Promise<void>;
 }) {
   const [content, setContent] = useState("");
   const [isEmailMode, setIsEmailMode] = useState(false);
@@ -53,20 +55,20 @@ export function GrantComments({
   const filteredMembers = teamMembers.filter(
     (m) =>
       m.id !== currentUserId &&
-      m.name.toLowerCase().includes(mentionFilter.toLowerCase())
+      m.name.toLowerCase().includes(mentionFilter.trim().toLowerCase())
   );
 
   function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const val = e.target.value;
     setContent(val);
 
-    // Check for @ trigger
+    // Check for @ trigger — supports multi-word names (e.g. @Nadine Jermy)
     const cursorPos = e.target.selectionStart;
     const textBeforeCursor = val.slice(0, cursorPos);
-    const atMatch = textBeforeCursor.match(/@(\w*)$/);
+    const atMatch = textBeforeCursor.match(/@(\w+(?:\s+\w+)*\s*)?$/);
     if (atMatch) {
       setShowMentions(true);
-      setMentionFilter(atMatch[1]);
+      setMentionFilter(atMatch[1] || "");
     } else {
       setShowMentions(false);
     }
@@ -94,10 +96,18 @@ export function GrantComments({
   function handleSubmit() {
     if (!content.trim()) return;
 
+    // Auto-detect mentions from text (catches manually-typed @names)
+    const detectedIds = new Set(mentionIds);
+    for (const member of teamMembers) {
+      if (content.includes(`@${member.name}`)) {
+        detectedIds.add(member.id);
+      }
+    }
+
     const formData = new FormData();
     formData.set("grantId", grantId);
     formData.set("content", content);
-    formData.set("mentionIds", JSON.stringify(mentionIds));
+    formData.set("mentionIds", JSON.stringify([...detectedIds]));
 
     if (isEmailMode) {
       formData.set("emailSubject", emailSubject);
@@ -160,15 +170,30 @@ export function GrantComments({
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-gray-500">
-                  {new Date(comment.createdAt).toLocaleString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">
+                    {new Date(comment.createdAt).toLocaleString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <form action={deleteCommentAction}>
+                    <input type="hidden" name="commentId" value={comment.id} />
+                    <button
+                      type="submit"
+                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                      title="Delete"
+                      onClick={(e) => {
+                        if (!confirm("Delete this comment?")) e.preventDefault();
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </form>
+                </div>
               </div>
               {comment.isEmail && comment.emailSubject && (
                 <p className="text-xs text-gray-500 mb-1">
