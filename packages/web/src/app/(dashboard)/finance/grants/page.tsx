@@ -300,7 +300,18 @@ export default async function GrantsPage({
                         {grant.title}
                       </Link>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">{grant.funderName}</td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {grant.funderId ? (
+                        <Link
+                          href="/crm/organisations"
+                          className="text-indigo-600 hover:text-indigo-700 hover:underline"
+                        >
+                          {grant.funderName}
+                        </Link>
+                      ) : (
+                        grant.funderName
+                      )}
+                    </td>
                     <td className="px-6 py-4 font-medium text-gray-900">
                       {grant.amountAwarded
                         ? fmt(grant.amountAwarded)

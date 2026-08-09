@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Input } from "@/components/ui/input";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { RoleMultiSelect } from "@/components/ui/role-multi-select";
 
 export default async function OrganisationsPage() {
   const [organisations, availableRoles] = await Promise.all([
@@ -135,17 +136,9 @@ export default async function OrganisationsPage() {
           {availableRoles.length > 0 && (
             <div className="flex items-center gap-3 pt-1">
               <span className="text-xs font-medium text-gray-500">Roles:</span>
-              {availableRoles.map((role) => (
-                <label key={role.id} className="flex items-center gap-1.5 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    name="roleIds"
-                    value={role.id}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  {role.name}
-                </label>
-              ))}
+              <div className="w-64">
+                <RoleMultiSelect roles={availableRoles} selectedIds={[]} />
+              </div>
             </div>
           )}
         </form>
@@ -241,18 +234,12 @@ export default async function OrganisationsPage() {
                   {availableRoles.length > 0 && (
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-medium text-gray-500">Roles:</span>
-                      {availableRoles.map((role) => (
-                        <label key={role.id} className="flex items-center gap-1.5 text-sm text-gray-700">
-                          <input
-                            type="checkbox"
-                            name="roleIds"
-                            value={role.id}
-                            defaultChecked={org.roleAssignments.some((ra) => ra.roleId === role.id)}
-                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                          />
-                          {role.name}
-                        </label>
-                      ))}
+                      <div className="w-64">
+                        <RoleMultiSelect
+                          roles={availableRoles}
+                          selectedIds={org.roleAssignments.map((ra) => ra.roleId)}
+                        />
+                      </div>
                     </div>
                   )}
                   <Button type="submit" size="sm">Save Changes</Button>

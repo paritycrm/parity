@@ -17,13 +17,16 @@ export default async function OrganisationRolesPage() {
     include: { _count: { select: { assignments: true } } },
   });
 
-  // Ensure default system roles exist
-  const systemRoles = ["Supplier", "Funder"];
-  for (const roleName of systemRoles) {
-    const exists = roles.find((r) => r.name === roleName);
+  // Ensure default system roles exist with distinct colours
+  const systemRoles = [
+    { name: "Supplier", colour: "#10b981" },
+    { name: "Funder", colour: "#d97706" },
+  ];
+  for (const sr of systemRoles) {
+    const exists = roles.find((r) => r.name === sr.name);
     if (!exists) {
       await prisma.organisationRole.create({
-        data: { name: roleName, isSystem: true },
+        data: { name: sr.name, colour: sr.colour, isSystem: true },
       });
     }
   }
@@ -62,6 +65,20 @@ export default async function OrganisationRolesPage() {
     if (!role || role.isSystem) return; // can't delete system roles
 
     await prisma.organisationRole.delete({ where: { id: roleId } });
+    revalidatePath("/settings/organisation-roles");
+  }
+
+  async function updateRoleColour(formData: FormData) {
+    "use server";
+    const s = await getSession();
+    if (!s || s.role !== "ADMIN") redirect("/");
+
+    const roleId = formData.get("roleId") as string;
+    const colour = formData.get("colour") as string;
+    await prisma.organisationRole.update({
+      where: { id: roleId },
+      data: { colour },
+    });
     revalidatePath("/settings/organisation-roles");
   }
 
@@ -130,18 +147,32 @@ export default async function OrganisationRolesPage() {
                     <span className="text-xs text-gray-400">(system)</span>
                   )}
                 </div>
-                {!role.isSystem && (
-                  <form action={deleteRole}>
+                <div className="flex items-center gap-2">
+                  <form action={updateRoleColour} className="flex items-center gap-2">
                     <input type="hidden" name="roleId" value={role.id} />
-                    <ConfirmButton
-                      message={`Delete the "${role.name}" role? It will be removed from all organisations.`}
-                      variant="destructive"
-                      size="sm"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </ConfirmButton>
+                    <input
+                      name="colour"
+                      type="color"
+                      defaultValue={role.colour || "#6366f1"}
+                      className="h-7 w-10 rounded border border-gray-300 cursor-pointer"
+                    />
+                    <Button type="submit" variant="outline" size="sm">
+                      Save
+                    </Button>
                   </form>
-                )}
+                  {!role.isSystem && (
+                    <form action={deleteRole}>
+                      <input type="hidden" name="roleId" value={role.id} />
+                      <ConfirmButton
+                        message={`Delete the "${role.name}" role? It will be removed from all organisations.`}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </ConfirmButton>
+                    </form>
+                  )}
+                </div>
               </div>
             ))}
           </div>

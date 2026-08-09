@@ -20,6 +20,7 @@ import { GrantComments } from "./components/grant-comments";
 import { GrantRequirements } from "./components/grant-requirements";
 import { GrantRestrictions } from "./components/grant-restrictions";
 import { GrantInstalments } from "./components/grant-instalments";
+import { FunderSelect } from "@/components/ui/funder-select";
 
 export default async function GrantDetailPage({
   params,
@@ -59,11 +60,18 @@ export default async function GrantDetailPage({
 
   if (!grant) notFound();
 
-  const teamMembers = await prisma.user.findMany({
-    where: { role: { in: ["ADMIN", "STAFF"] } },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: "asc" },
-  });
+  const [teamMembers, funderOrgs] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: { in: ["ADMIN", "STAFF"] } },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.organisation.findMany({
+      where: { roleAssignments: { some: { role: { name: "Funder" } } } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   // ─── Server Actions ───
 
@@ -96,11 +104,13 @@ export default async function GrantDetailPage({
       return v ? new Date(v) : null;
     };
 
+    const funderIdVal = (formData.get("funderId") as string) || null;
     await prisma.grant.update({
       where: { id },
       data: {
         title: formData.get("title") as string,
         funderName: formData.get("funderName") as string,
+        funderId: funderIdVal,
         type: formData.get("type") as string,
         description: parse("description"),
         purpose: parse("purpose"),
@@ -462,7 +472,16 @@ export default async function GrantDetailPage({
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{grant.title}</h1>
             <p className="text-sm text-gray-500">
-              {grant.funderName} · <Badge className={statusColors[grant.status]}>{grant.status}</Badge>
+              {grant.funderId ? (
+                <Link
+                  href="/crm/organisations"
+                  className="text-indigo-600 hover:text-indigo-700 hover:underline"
+                >
+                  {grant.funderName}
+                </Link>
+              ) : (
+                grant.funderName
+              )} · <Badge className={statusColors[grant.status]}>{grant.status}</Badge>
               {grant.isAnonymous && (
                 <Badge className="ml-2 bg-amber-100 text-amber-800">Anonymous Funder</Badge>
               )}
@@ -577,10 +596,13 @@ export default async function GrantDetailPage({
                   <div className="pt-6 border-t">
                     <h3 className="text-sm font-semibold text-gray-900 mb-4">Edit Details</h3>
                     <form action={updateGrantDetails} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input label="Title" name="title" required defaultValue={grant.title} />
-                        <Input label="Funder Name" name="funderName" required defaultValue={grant.funderName} />
-                      </div>
+                      <Input label="Title" name="title" required defaultValue={grant.title} />
+                      <FunderSelect
+                        funderOrgs={funderOrgs}
+                        defaultFunderId={grant.funderId}
+                        defaultFunderName={grant.funderName}
+                        required
+                      />
                       <div className="grid grid-cols-2 gap-4">
                         <Select label="Type" name="type" required defaultValue={grant.type} options={typeOptions} />
                         <Input label="Reference" name="reference" defaultValue={grant.reference || ""} />

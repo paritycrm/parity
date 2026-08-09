@@ -8,19 +8,28 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { FunderSelect } from "@/components/ui/funder-select";
 
 export default async function NewGrantPage() {
+  const funderOrgs = await prisma.organisation.findMany({
+    where: { roleAssignments: { some: { role: { name: "Funder" } } } },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
   async function createGrant(formData: FormData) {
     "use server";
     const session = await requireAuth();
 
     const amountRequested = formData.get("amountRequested") as string;
     const applicationDeadline = formData.get("applicationDeadline") as string;
+    const funderIdVal = (formData.get("funderId") as string) || null;
 
     const grant = await prisma.grant.create({
       data: {
         title: formData.get("title") as string,
         funderName: formData.get("funderName") as string,
+        funderId: funderIdVal,
         type: (formData.get("type") as string) || "TRUST",
         status: "IDENTIFIED",
         amountRequested: amountRequested ? parseFloat(amountRequested) : null,
@@ -53,20 +62,13 @@ export default async function NewGrantPage() {
       <Card>
         <CardContent className="pt-6">
           <form action={createGrant} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Grant Title"
-                name="title"
-                placeholder="e.g. Community Development Fund 2024"
-                required
-              />
-              <Input
-                label="Funder Name"
-                name="funderName"
-                placeholder="e.g. National Lottery Heritage Fund"
-                required
-              />
-            </div>
+            <Input
+              label="Grant Title"
+              name="title"
+              placeholder="e.g. Community Development Fund 2024"
+              required
+            />
+            <FunderSelect funderOrgs={funderOrgs} required />
 
             <div className="grid grid-cols-2 gap-4">
               <Select
