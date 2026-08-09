@@ -2,6 +2,7 @@
 
 import { Bell, Search } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import Link from "next/link";
 
 interface TopBarProps {
   user: {
@@ -30,12 +31,15 @@ export function TopBar({ user, notificationCount = 0 }: TopBarProps) {
 
       {/* Right side */}
       <div className="flex items-center gap-4">
-        <button className="relative rounded-full p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+        <Link
+          href="/notifications"
+          className="relative rounded-full p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+        >
           <Bell className="h-5 w-5" />
           {notificationCount > 0 && (
             <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
           )}
-        </button>
+        </Link>
         <div className="flex items-center gap-3">
           <Avatar firstName={firstName} lastName={lastName} size="sm" />
           <div className="hidden sm:block">

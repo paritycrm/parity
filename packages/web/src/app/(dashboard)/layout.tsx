@@ -28,10 +28,16 @@ export default async function DashboardLayout({
     guardRoute(session, pathname);
   }
 
-  // Count pending (unsent, past-due) reminders for the notification bell
-  const notificationCount = await prisma.reminder.count({
-    where: { isSent: false, triggerDate: { lte: new Date() } },
-  });
+  // Count unread notifications + pending reminders for the bell badge
+  const [unreadNotifications, pendingReminders] = await Promise.all([
+    prisma.notification.count({
+      where: { recipientId: session.id, readAt: null },
+    }),
+    prisma.reminder.count({
+      where: { isSent: false, triggerDate: { lte: new Date() } },
+    }),
+  ]);
+  const notificationCount = unreadNotifications + pendingReminders;
 
   // Load white-label branding
   const branding = await loadBranding();
