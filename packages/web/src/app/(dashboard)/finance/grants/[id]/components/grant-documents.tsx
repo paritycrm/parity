@@ -70,7 +70,7 @@ export function GrantDocuments({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
-        <label className="cursor-pointer">
+        <label className="cursor-pointer inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
           <input
             type="file"
             className="hidden"
@@ -78,12 +78,8 @@ export function GrantDocuments({
             onChange={handleUpload}
             disabled={uploading || isPending}
           />
-          <Button variant="outline" size="sm" asChild>
-            <span>
-              <Upload className="h-4 w-4 mr-2" />
-              {uploading ? "Uploading..." : "Upload Document"}
-            </span>
-          </Button>
+          <Upload className="h-4 w-4" />
+          {uploading ? "Uploading..." : "Upload Document"}
         </label>
       </div>
 

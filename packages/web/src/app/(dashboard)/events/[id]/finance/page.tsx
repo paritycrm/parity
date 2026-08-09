@@ -84,7 +84,10 @@ export default async function EventFinancePage({
       },
     }),
     prisma.organisation.findMany({
-      where: { isSupplier: true, isArchived: false },
+      where: {
+        isArchived: false,
+        roleAssignments: { some: { role: { name: "Supplier" } } },
+      },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),

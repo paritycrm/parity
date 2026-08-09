@@ -300,7 +300,6 @@ model Organisation {
   postcode     String?
   country      String?
   parentId     String? // FK → Organisation (parent/child hierarchy)
-  isSupplier   Boolean  @default(false)
   isArchived   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -313,6 +312,29 @@ model Organisation {
   eventIncomeLines EventIncomeLine[]      @relation("IncomeLineOrg")
   eventCostLines   EventCostLine[]        @relation("CostLineOrg")
   eventSponsors    EventSponsor[]         @relation("SponsorOrg")
+  roleAssignments  OrganisationRoleAssignment[]
+}
+
+model OrganisationRole {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  colour    String?  // hex colour for badge display
+  isSystem  Boolean  @default(false) // system roles can't be deleted
+  createdAt DateTime @default(now())
+
+  assignments OrganisationRoleAssignment[]
+}
+
+model OrganisationRoleAssignment {
+  organisationId String
+  roleId         String
+  assignedAt     DateTime @default(now())
+
+  organisation Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  role         OrganisationRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([organisationId, roleId])
+  @@index([roleId])
 }
 
 model Tag {

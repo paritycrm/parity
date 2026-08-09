@@ -11,15 +11,23 @@ import { Input } from "@/components/ui/input";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 
 export default async function OrganisationsPage() {
-  const organisations = await prisma.organisation.findMany({
-    include: { _count: { select: { contacts: true } } },
-    orderBy: { name: "asc" },
-  });
+  const [organisations, availableRoles] = await Promise.all([
+    prisma.organisation.findMany({
+      include: {
+        _count: { select: { contacts: true } },
+        roleAssignments: { include: { role: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.organisationRole.findMany({ orderBy: { name: "asc" } }),
+  ]);
 
   async function createOrg(formData: FormData) {
     "use server";
     const session = await getSession();
     if (!session) redirect("/login");
+
+    const roleIds = formData.getAll("roleIds") as string[];
 
     await prisma.organisation.create({
       data: {
@@ -28,7 +36,9 @@ export default async function OrganisationsPage() {
         website: (formData.get("website") as string) || null,
         phone: (formData.get("phone") as string) || null,
         email: (formData.get("email") as string) || null,
-        isSupplier: formData.get("isSupplier") === "on",
+        roleAssignments: {
+          create: roleIds.map((roleId) => ({ roleId })),
+        },
       },
     });
     revalidatePath("/crm/organisations");
@@ -41,17 +51,29 @@ export default async function OrganisationsPage() {
     if (!session) redirect("/login");
 
     const orgId = formData.get("orgId") as string;
-    await prisma.organisation.update({
-      where: { id: orgId },
-      data: {
-        name: formData.get("name") as string,
-        type: (formData.get("type") as string) || null,
-        website: (formData.get("website") as string) || null,
-        phone: (formData.get("phone") as string) || null,
-        email: (formData.get("email") as string) || null,
-        isSupplier: formData.get("isSupplier") === "on",
-      },
+    const roleIds = formData.getAll("roleIds") as string[];
+
+    await prisma.$transaction(async (tx) => {
+      await tx.organisation.update({
+        where: { id: orgId },
+        data: {
+          name: formData.get("name") as string,
+          type: (formData.get("type") as string) || null,
+          website: (formData.get("website") as string) || null,
+          phone: (formData.get("phone") as string) || null,
+          email: (formData.get("email") as string) || null,
+        },
+      });
+
+      // Replace all role assignments
+      await tx.organisationRoleAssignment.deleteMany({ where: { organisationId: orgId } });
+      if (roleIds.length > 0) {
+        await tx.organisationRoleAssignment.createMany({
+          data: roleIds.map((roleId) => ({ organisationId: orgId, roleId })),
+        });
+      }
     });
+
     revalidatePath("/crm/organisations");
     redirect("/crm/organisations");
   }
@@ -62,9 +84,7 @@ export default async function OrganisationsPage() {
     if (!session) redirect("/login");
 
     const orgId = formData.get("orgId") as string;
-    await prisma.organisation.delete({
-      where: { id: orgId },
-    });
+    await prisma.organisation.delete({ where: { id: orgId } });
     revalidatePath("/crm/organisations");
     redirect("/crm/organisations");
   }
@@ -76,6 +96,9 @@ export default async function OrganisationsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Organisations</h1>
           <p className="text-gray-500 mt-1">Manage organisations linked to your contacts</p>
         </div>
+        <Link href="/settings/organisation-roles">
+          <Button variant="outline" size="sm">Manage Roles</Button>
+        </Link>
       </div>
 
       {/* Quick add form */}
@@ -99,20 +122,32 @@ export default async function OrganisationsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-              <input name="phone" placeholder="01onal..." className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input name="phone" placeholder="01..." className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input name="email" type="email" placeholder="info@..." className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
-            <label className="flex items-center gap-2 text-sm text-gray-700 pb-2">
-              <input type="checkbox" name="isSupplier" className="rounded border-gray-300 text-orange-600 focus:ring-orange-500" />
-              Supplier
-            </label>
             <Button type="submit">
               <Plus className="h-4 w-4 mr-2" /> Add
             </Button>
           </div>
+          {availableRoles.length > 0 && (
+            <div className="flex items-center gap-3 pt-1">
+              <span className="text-xs font-medium text-gray-500">Roles:</span>
+              {availableRoles.map((role) => (
+                <label key={role.id} className="flex items-center gap-1.5 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="roleIds"
+                    value={role.id}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  {role.name}
+                </label>
+              ))}
+            </div>
+          )}
         </form>
       </Card>
 
@@ -132,11 +167,17 @@ export default async function OrganisationsPage() {
                     <Building2 className="h-5 w-5 text-gray-600" />
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-900">{org.name}</h3>
-                      {org.isSupplier && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">Supplier</span>
-                      )}
+                      {org.roleAssignments.map((ra) => (
+                        <span
+                          key={ra.roleId}
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
+                          style={{ backgroundColor: ra.role.colour || "#6366f1" }}
+                        >
+                          {ra.role.name}
+                        </span>
+                      ))}
                     </div>
                     {org.type && <p className="text-sm text-gray-500">{org.type}</p>}
                     <p className="text-sm text-gray-400 mt-1">
@@ -190,19 +231,30 @@ export default async function OrganisationsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
-                      <Input name="phone" defaultValue={org.phone || ""} placeholder="01onal..." />
+                      <Input name="phone" defaultValue={org.phone || ""} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                      <Input name="email" type="email" defaultValue={org.email || ""} placeholder="info@..." />
-                    </div>
-                    <div className="flex items-end pb-2">
-                      <label className="flex items-center gap-2 text-sm text-gray-700">
-                        <input type="checkbox" name="isSupplier" defaultChecked={org.isSupplier} className="rounded border-gray-300 text-orange-600 focus:ring-orange-500" />
-                        Supplier
-                      </label>
+                      <Input name="email" type="email" defaultValue={org.email || ""} />
                     </div>
                   </div>
+                  {availableRoles.length > 0 && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-medium text-gray-500">Roles:</span>
+                      {availableRoles.map((role) => (
+                        <label key={role.id} className="flex items-center gap-1.5 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            name="roleIds"
+                            value={role.id}
+                            defaultChecked={org.roleAssignments.some((ra) => ra.roleId === role.id)}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          {role.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                   <Button type="submit" size="sm">Save Changes</Button>
                 </form>
               </details>
