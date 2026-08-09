@@ -31,6 +31,8 @@ export default async function NewGrantPage() {
         contactEmail: (formData.get("contactEmail") as string) || null,
         reference: (formData.get("reference") as string) || null,
         notes: (formData.get("notes") as string) || null,
+        isAnonymous: formData.get("isAnonymous") === "true",
+        allowsPublicity: formData.get("allowsPublicity") === "true",
         createdById: session.id,
       },
     });
@@ -133,6 +135,23 @@ export default async function NewGrantPage() {
               name="notes"
               placeholder="Additional notes..."
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Anonymous Funder</label>
+                <select name="isAnonymous" defaultValue="false" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                  <option value="false">No</option>
+                  <option value="true">Yes — funder wishes to remain anonymous</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Allows Publicity</label>
+                <select name="allowsPublicity" defaultValue="false" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </div>
+            </div>
 
             <div className="flex justify-end gap-3">
               <Link href="/finance/grants">

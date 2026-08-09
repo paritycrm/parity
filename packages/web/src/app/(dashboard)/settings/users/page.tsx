@@ -162,7 +162,7 @@ export default async function UserManagementPage({
         "DonorOpportunity", "ReconciliationSession", "GasdsClaim",
         "PartnershipActivity", "SavedSegment", "DonationImport",
         "Pledge", "BoardReport", "FinancialReport", "Webhook",
-        "BankDocument",
+        "BankDocument", "GrantReportingRequirement",
       ];
 
       for (const table of tables) {
@@ -193,6 +193,10 @@ export default async function UserManagementPage({
         { table: "AutoTask", col: "assigneeId" },
         { table: "TinReturn", col: "countedById" },
         { table: "GiftAidClaim", col: "submittedById" },
+        { table: "GrantDocument", col: "uploadedById" },
+        { table: "GrantComment", col: "authorId" },
+        { table: "GrantRequirementAttachment", col: "uploadedById" },
+        { table: "GrantRestrictionEvidence", col: "uploadedById" },
       ];
 
       for (const { table, col } of nullableTables) {
@@ -201,6 +205,12 @@ export default async function UserManagementPage({
           userId
         );
       }
+
+      // Delete grant mention references (join table, not reassignable)
+      await tx.$executeRawUnsafe(
+        `DELETE FROM "GrantCommentMention" WHERE "userId" = $1`,
+        userId
+      );
 
       // Delete the user (cascades sessions, notifications, etc.)
       await tx.user.delete({ where: { id: userId } });

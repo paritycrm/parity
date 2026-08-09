@@ -162,6 +162,12 @@ model User {
   taskRulesAssignee          TaskRule[]              @relation("TaskRuleAssignee")
   autoTasksAssigned          AutoTask[]              @relation("AutoTaskAssignee")
   bankDocuments              BankDocument[]          @relation("BankDocCreatedBy")
+  grantDocuments             GrantDocument[]         @relation("GrantDocUploadedBy")
+  grantComments              GrantComment[]          @relation("GrantCommentAuthor")
+  grantCommentMentions       GrantCommentMention[]   @relation("GrantMentionUser")
+  grantRequirementsCreated   GrantReportingRequirement[] @relation("GrantReqCreatedBy")
+  grantReqAttachments        GrantRequirementAttachment[] @relation("GrantReqAttUploadedBy")
+  grantRestrictionEvidence   GrantRestrictionEvidence[] @relation("GrantRestEvidenceUploadedBy")
 }
 
 model Department {
@@ -2179,15 +2185,163 @@ model Grant {
   contactEmail        String?
   reference           String?
   notes               String?
+  isAnonymous         Boolean   @default(false)
+  allowsPublicity     Boolean   @default(false)
+  funderLogoUrl       String?   // base64 data URL of funder logo for publicity
+  funderLogoSpec      String?   // e.g. "1200x600 JPEG" — required format/size spec
+  isSplitPayment      Boolean   @default(false)
+  splitPeriodType     String?   // MONTH | QUARTER | YEAR
   createdById         String
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  funder    Organisation? @relation(fields: [funderId], references: [id])
-  createdBy User          @relation("GrantCreatedBy", fields: [createdById], references: [id])
+  funder       Organisation? @relation(fields: [funderId], references: [id])
+  createdBy    User          @relation("GrantCreatedBy", fields: [createdById], references: [id])
+  documents    GrantDocument[]
+  comments     GrantComment[]
+  requirements GrantReportingRequirement[]
+  restrictions GrantRestriction[]
+  instalments  GrantInstalment[]
 
   @@index([status])
   @@index([funderId])
+}
+
+model GrantDocument {
+  id           String   @id @default(cuid())
+  grantId      String
+  fileName     String
+  fileType     String   // application/pdf, image/jpeg, etc.
+  fileSize     Int
+  fileData     String   // base64 data URL
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  grant      Grant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  uploadedBy User  @relation("GrantDocUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([grantId])
+}
+
+model GrantComment {
+  id        String   @id @default(cuid())
+  grantId   String
+  authorId  String
+  content   String
+  isEmail   Boolean  @default(false)
+  emailTo   String?
+  emailSubject String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  grant       Grant                    @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  author      User                     @relation("GrantCommentAuthor", fields: [authorId], references: [id])
+  mentions    GrantCommentMention[]
+  attachments GrantCommentAttachment[]
+
+  @@index([grantId])
+}
+
+model GrantCommentMention {
+  id        String @id @default(cuid())
+  commentId String
+  userId    String
+
+  comment GrantComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User         @relation("GrantMentionUser", fields: [userId], references: [id])
+
+  @@unique([commentId, userId])
+}
+
+model GrantCommentAttachment {
+  id        String @id @default(cuid())
+  commentId String
+  fileName  String
+  fileType  String
+  fileSize  Int
+  fileData  String // base64 data URL
+
+  comment GrantComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+}
+
+model GrantReportingRequirement {
+  id          String    @id @default(cuid())
+  grantId     String
+  title       String
+  description String?
+  dueDate     DateTime
+  status      String    @default("PENDING") // PENDING | IN_PROGRESS | SUBMITTED | COMPLETE
+  completedAt DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  grant       Grant                        @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  createdBy   User                         @relation("GrantReqCreatedBy", fields: [createdById], references: [id])
+  attachments GrantRequirementAttachment[]
+
+  @@index([grantId])
+  @@index([dueDate])
+}
+
+model GrantRequirementAttachment {
+  id            String   @id @default(cuid())
+  requirementId String
+  fileName      String
+  fileType      String
+  fileSize      Int
+  fileData      String   // base64 data URL
+  uploadedById  String
+  createdAt     DateTime @default(now())
+
+  requirement GrantReportingRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  uploadedBy  User                     @relation("GrantReqAttUploadedBy", fields: [uploadedById], references: [id])
+}
+
+model GrantRestriction {
+  id          String   @id @default(cuid())
+  grantId     String
+  description String
+  amount      Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  grant    Grant                     @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  evidence GrantRestrictionEvidence[]
+
+  @@index([grantId])
+}
+
+model GrantRestrictionEvidence {
+  id            String   @id @default(cuid())
+  restrictionId String
+  description   String
+  amount        Float?
+  fileName      String?
+  fileType      String?
+  fileData      String?  // base64 data URL
+  uploadedById  String
+  createdAt     DateTime @default(now())
+
+  restriction GrantRestriction @relation(fields: [restrictionId], references: [id], onDelete: Cascade)
+  uploadedBy  User             @relation("GrantRestEvidenceUploadedBy", fields: [uploadedById], references: [id])
+}
+
+model GrantInstalment {
+  id           String    @id @default(cuid())
+  grantId      String
+  periodLabel  String    // "Year 1", "Month 3", etc.
+  amount       Float
+  expectedDate DateTime
+  receivedDate DateTime?
+  received     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  grant Grant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  @@index([grantId])
+  @@index([expectedDate])
 }
 
 // ============================================
