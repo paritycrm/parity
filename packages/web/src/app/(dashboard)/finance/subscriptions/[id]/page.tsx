@@ -3,12 +3,12 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Pause, Play, XCircle } from "lucide-react";
+import { ArrowLeft, Trash2, Edit2, Pause, Play, XCircle, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { logAudit } from "@/lib/audit";
 import { formatDate } from "@/lib/utils";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 
@@ -32,17 +32,66 @@ export default async function SubscriptionDetailPage({
 
   if (!subscription) notFound();
 
-  async function updateSubscriptionStatus(formData: FormData) {
+  // Fetch audit logs for this subscription
+  const auditLogs = await prisma.auditLog.findMany({
+    where: { entityType: "Subscription", entityId: id },
+    include: { user: true },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  async function updateSubscription(formData: FormData) {
     "use server";
     const session = await requireAuth();
 
-    const current = await prisma.subscription.findUnique({ where: { id } });
-    if (!current) return;
+    const existing = await prisma.subscription.findUnique({ where: { id } });
+    if (!existing) return;
 
-    const status = formData.get("status") as string;
-    const updateData: any = { status };
+    const newAmount = parseFloat(formData.get("amount") as string);
+    const newStatus = formData.get("status") as string;
+    const newFrequency = formData.get("frequency") as string;
+    const newStartDate = formData.get("startDate") as string;
+    const newEndDate = (formData.get("endDate") as string) || null;
 
-    if (status === "CANCELLED") {
+    // Build changes object tracking old vs new values
+    const changes: Record<string, { old: any; new: any }> = {};
+
+    if (existing.amount !== newAmount) {
+      changes.amount = { old: existing.amount, new: newAmount };
+    }
+    if (existing.status !== newStatus) {
+      changes.status = { old: existing.status, new: newStatus };
+    }
+    if (existing.frequency !== newFrequency) {
+      changes.frequency = { old: existing.frequency, new: newFrequency };
+    }
+
+    const existingStartStr = existing.startDate.toISOString().split("T")[0];
+    if (newStartDate && existingStartStr !== newStartDate) {
+      changes.startDate = { old: existingStartStr, new: newStartDate };
+    }
+
+    const existingEndStr = existing.endDate
+      ? existing.endDate.toISOString().split("T")[0]
+      : null;
+    if (newEndDate !== existingEndStr) {
+      changes.endDate = { old: existingEndStr, new: newEndDate };
+    }
+
+    const updateData: any = {
+      amount: newAmount,
+      status: newStatus,
+      frequency: newFrequency,
+      startDate: new Date(newStartDate),
+    };
+
+    if (newEndDate) {
+      updateData.endDate = new Date(newEndDate);
+    } else {
+      updateData.endDate = null;
+    }
+
+    if (newStatus === "CANCELLED" && existing.status !== "CANCELLED") {
       updateData.cancelledAt = new Date();
     }
 
@@ -51,13 +100,59 @@ export default async function SubscriptionDetailPage({
       data: updateData,
     });
 
-    await logAudit({
-      userId: session.id,
-      action: "UPDATE",
-      entityType: "Subscription",
-      entityId: id,
-      details: { status },
+    // Create audit log with changes
+    if (Object.keys(changes).length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          entityType: "Subscription",
+          entityId: id,
+          action: "UPDATE",
+          changes,
+          userId: session.id,
+        },
+      });
+    }
+
+    revalidatePath(`/finance/subscriptions/${id}`);
+  }
+
+  async function updateSubscriptionStatus(formData: FormData) {
+    "use server";
+    const session = await requireAuth();
+
+    const existing = await prisma.subscription.findUnique({ where: { id } });
+    if (!existing) return;
+
+    const status = formData.get("status") as string;
+    const updateData: any = { status };
+
+    if (status === "CANCELLED") {
+      updateData.cancelledAt = new Date();
+    }
+
+    // Track the status change
+    const changes: Record<string, { old: any; new: any }> = {};
+    if (existing.status !== status) {
+      changes.status = { old: existing.status, new: status };
+    }
+
+    await prisma.subscription.update({
+      where: { id },
+      data: updateData,
     });
+
+    // Create audit log with changes
+    if (Object.keys(changes).length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          entityType: "Subscription",
+          entityId: id,
+          action: "UPDATE",
+          changes,
+          userId: session.id,
+        },
+      });
+    }
 
     revalidatePath(`/finance/subscriptions/${id}`);
   }
@@ -66,15 +161,27 @@ export default async function SubscriptionDetailPage({
     "use server";
     const session = await requireAuth();
 
+    const existing = await prisma.subscription.findUnique({ where: { id } });
+
     await prisma.subscription.delete({
       where: { id },
     });
 
-    await logAudit({
-      userId: session.id,
-      action: "DELETE",
-      entityType: "Subscription",
-      entityId: id,
+    // Create audit log for deletion
+    await prisma.auditLog.create({
+      data: {
+        entityType: "Subscription",
+        entityId: id,
+        action: "DELETE",
+        changes: existing
+          ? {
+              amount: { old: existing.amount, new: null },
+              status: { old: existing.status, new: null },
+              frequency: { old: existing.frequency, new: null },
+            }
+          : null,
+        userId: session.id,
+      },
     });
 
     revalidatePath("/finance/subscriptions");
@@ -94,6 +201,23 @@ export default async function SubscriptionDetailPage({
     QUARTERLY: "bg-purple-100 text-purple-800",
     ANNUALLY: "bg-pink-100 text-pink-800",
   };
+
+  const actionColors: Record<string, string> = {
+    CREATE: "bg-green-100 text-green-800",
+    UPDATE: "bg-blue-100 text-blue-800",
+    DELETE: "bg-red-100 text-red-800",
+  };
+
+  function formatChanges(changes: any): string {
+    if (!changes || typeof changes !== "object") return "";
+    return Object.entries(changes)
+      .map(([field, vals]: [string, any]) => {
+        const oldVal = vals.old ?? "—";
+        const newVal = vals.new ?? "—";
+        return `${field}: ${oldVal} → ${newVal}`;
+      })
+      .join(", ");
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -280,47 +404,156 @@ export default async function SubscriptionDetailPage({
         </Card>
       )}
 
-      {/* Update Status Form */}
+      {/* Edit Subscription Form */}
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900">Update Status</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Edit Subscription</h3>
         </CardHeader>
         <CardContent>
-          <form action={updateSubscriptionStatus} className="space-y-6">
-            <Select
-              label="Status"
-              name="status"
-              required
-              defaultValue={subscription.status}
-              options={[
-                { value: "ACTIVE", label: "Active" },
-                { value: "PAUSED", label: "Paused" },
-                { value: "CANCELLED", label: "Cancelled" },
-                { value: "EXPIRED", label: "Expired" },
-              ]}
+          <form action={updateSubscription} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Amount"
+                name="amount"
+                type="number"
+                step="0.01"
+                required
+                defaultValue={subscription.amount}
+              />
+              <Select
+                label="Frequency"
+                name="frequency"
+                required
+                defaultValue={subscription.frequency}
+                options={[
+                  { value: "WEEKLY", label: "Weekly" },
+                  { value: "MONTHLY", label: "Monthly" },
+                  { value: "QUARTERLY", label: "Quarterly" },
+                  { value: "ANNUALLY", label: "Annually" },
+                ]}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                label="Status"
+                name="status"
+                required
+                defaultValue={subscription.status}
+                options={[
+                  { value: "ACTIVE", label: "Active" },
+                  { value: "PAUSED", label: "Paused" },
+                  { value: "CANCELLED", label: "Cancelled" },
+                  { value: "EXPIRED", label: "Expired" },
+                ]}
+              />
+              <Input
+                label="Start Date"
+                name="startDate"
+                type="date"
+                required
+                defaultValue={subscription.startDate.toISOString().split("T")[0]}
+              />
+            </div>
+
+            <Input
+              label="End Date"
+              name="endDate"
+              type="date"
+              defaultValue={subscription.endDate?.toISOString().split("T")[0] || ""}
             />
 
-            <div className="flex gap-3">
-              {subscription.status === "PAUSED" && (
-                <Button type="submit" name="status" value="ACTIVE">
-                  <Play className="h-4 w-4 mr-2" />
-                  Resume Subscription
-                </Button>
-              )}
-              {subscription.status === "ACTIVE" && (
-                <Button type="submit" name="status" value="PAUSED" variant="outline">
-                  <Pause className="h-4 w-4 mr-2" />
-                  Pause Subscription
-                </Button>
-              )}
-              {subscription.status !== "CANCELLED" && (
-                <Button type="submit" name="status" value="CANCELLED" variant="destructive">
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Cancel Subscription
-                </Button>
-              )}
-            </div>
+            <Button type="submit">
+              <Edit2 className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Quick Status Actions */}
+      <Card>
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+        </CardHeader>
+        <CardContent>
+          <form action={updateSubscriptionStatus} className="flex gap-3">
+            <input type="hidden" name="status" value="" />
+            {subscription.status === "PAUSED" && (
+              <Button type="submit" name="status" value="ACTIVE">
+                <Play className="h-4 w-4 mr-2" />
+                Resume Subscription
+              </Button>
+            )}
+            {subscription.status === "ACTIVE" && (
+              <Button type="submit" name="status" value="PAUSED" variant="outline">
+                <Pause className="h-4 w-4 mr-2" />
+                Pause Subscription
+              </Button>
+            )}
+            {subscription.status !== "CANCELLED" && (
+              <Button type="submit" name="status" value="CANCELLED" variant="destructive">
+                <XCircle className="h-4 w-4 mr-2" />
+                Cancel Subscription
+              </Button>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Activity Log */}
+      <Card>
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-gray-900">Activity Log</h3>
+        </CardHeader>
+        <CardContent>
+          {auditLogs.length === 0 ? (
+            <div className="text-center py-8">
+              <Clock className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-500">No activity recorded yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      User
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Action
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Changes
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {auditLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {formatDate(log.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-900">
+                        {log.user.name}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={actionColors[log.action] || "bg-gray-100 text-gray-800"}>
+                          {log.action}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {formatChanges(log.changes)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

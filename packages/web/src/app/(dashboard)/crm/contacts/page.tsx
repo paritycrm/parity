@@ -1,21 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { getSystemSettings } from "@/lib/settings";
 import Link from "next/link";
-import { Users, Plus, Search, Ticket, AlertCircle, Crown, Heart, Package, Upload } from "lucide-react";
+import { Users, Plus, Search, AlertCircle, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { ExportButton } from "@/components/ui/export-button";
+import { ContactsTable } from "@/components/contacts/contacts-table";
 
 const PAGE_SIZE = 50;
 
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; type?: string; lottery?: string; missing?: string; page?: string; archived?: string }>;
+  searchParams: Promise<{ search?: string; type?: string; lottery?: string; missing?: string; page?: string; archived?: string; sort?: string; dir?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
@@ -24,6 +23,8 @@ export default async function ContactsPage({
   const missingFilter = params.missing || "";
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
   const showArchived = params.archived === "true";
+  const sortField = params.sort || "createdAt";
+  const sortDir = (params.dir === "asc" || params.dir === "desc") ? params.dir : "desc";
 
   const where = {
     AND: [
@@ -47,6 +48,16 @@ export default async function ContactsPage({
     ],
   };
 
+  // Build dynamic orderBy from sort params
+  const orderByMap: Record<string, any> = {
+    createdAt: { createdAt: sortDir },
+    firstName: { firstName: sortDir },
+    lastName: { lastName: sortDir },
+    email: { email: sortDir },
+    donorId: { donorId: sortDir },
+  };
+  const orderBy = orderByMap[sortField] || { createdAt: "desc" };
+
   const [contacts, totalCount] = await Promise.all([
     prisma.contact.findMany({
       where,
@@ -62,7 +73,7 @@ export default async function ContactsPage({
           select: { amount: true },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip: (currentPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -70,20 +81,31 @@ export default async function ContactsPage({
   ]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-  const systemSettings = await getSystemSettings();
+  const [systemSettings, availableTags] = await Promise.all([
+    getSystemSettings(),
+    prisma.tag.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
-  // Build search params for pagination links (preserve existing filters)
+  // Build search params for pagination links (preserve existing filters + sort)
   const paginationParams: Record<string, string> = {};
   if (search) paginationParams.search = search;
   if (typeFilter) paginationParams.type = typeFilter;
   if (lotteryFilter) paginationParams.lottery = lotteryFilter;
   if (missingFilter) paginationParams.missing = missingFilter;
   if (showArchived) paginationParams.archived = "true";
+  if (sortField && sortField !== "createdAt") paginationParams.sort = sortField;
+  if (sortDir && sortDir !== "desc") paginationParams.dir = sortDir;
 
-  const typeColors: Record<string, string> = {
-    DONOR: "bg-green-100 text-green-800",
-    VOLUNTEER: "bg-indigo-100 text-indigo-800",
-  };
+  // Build sort params (all current search params except sort/dir/page, used by SortableHeader)
+  const sortParams: Record<string, string> = {};
+  if (search) sortParams.search = search;
+  if (typeFilter) sortParams.type = typeFilter;
+  if (lotteryFilter) sortParams.lottery = lotteryFilter;
+  if (missingFilter) sortParams.missing = missingFilter;
+  if (showArchived) sortParams.archived = "true";
 
   return (
     <div className="space-y-6">
@@ -194,115 +216,14 @@ export default async function ContactsPage({
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
-                    ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Organisation
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tags
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {contacts.map((contact) => {
-                  const lifetimeTotal = contact.donations.reduce((sum, d) => sum + Number(d.amount), 0);
-                  const isGold = lifetimeTotal >= Number(systemSettings.goldDonorThreshold);
-                  return (
-                  <tr key={contact.id} className={`${isGold ? "bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100" : "hover:bg-gray-50"} ${contact.isArchived ? "opacity-60" : ""} transition-colors`}>
-                    <td className="px-4 py-4">
-                      <span className="text-xs font-mono text-gray-400">{String(contact.donorId).padStart(5, "0")}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/crm/contacts/${contact.id}`}
-                        className="flex items-center gap-3"
-                      >
-                        <Avatar firstName={contact.firstName} lastName={contact.lastName} size="sm" />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-gray-900">
-                              {contact.firstName} {contact.lastName}
-                            </p>
-                            {isGold && (
-                              <Crown className="h-3.5 w-3.5 text-amber-500" />
-                            )}
-                            {contact.isArchived && (
-                              <span className="inline-flex items-center rounded-md bg-red-100 text-red-700 px-1.5 py-0.5 text-[10px] font-semibold">
-                                Archived
-                              </span>
-                            )}
-                          </div>
-                          {contact.phone && (
-                            <p className="text-xs text-gray-500">{contact.phone}</p>
-                          )}
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{contact.email || "—"}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {contact.types.map((t) => (
-                          <span key={t} className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${typeColors[t] || "bg-gray-100 text-gray-800"}`}>
-                            {t}
-                          </span>
-                        ))}
-                        {contact.giftAids.some((ga) => ga.type === "STANDARD") && (
-                          <span className="inline-flex items-center gap-0.5 rounded-md bg-pink-100 text-pink-800 px-1.5 py-0.5 text-[10px] font-semibold">
-                            <Heart className="h-2.5 w-2.5" />GA
-                          </span>
-                        )}
-                        {contact.giftAids.some((ga) => ga.type === "RETAIL") && (
-                          <span className="inline-flex items-center gap-0.5 rounded-md bg-purple-100 text-purple-800 px-1.5 py-0.5 text-[10px] font-semibold">
-                            <Package className="h-2.5 w-2.5" />RGA
-                          </span>
-                        )}
-                        {contact.isLotteryMember && (
-                          <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 text-amber-800 px-1.5 py-0.5 text-[10px] font-semibold">
-                            <Ticket className="h-2.5 w-2.5" />LM
-                          </span>
-                        )}
-                        {isGold && (
-                          <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-400 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm">
-                            <Crown className="h-2.5 w-2.5" />GOLD
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {contact.organisation?.name || "—"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-1 flex-wrap">
-                        {contact.tags.map((ct) => (
-                          <Badge key={ct.tagId} variant="outline" className="text-xs">
-                            {ct.tag.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
+          <ContactsTable
+            contacts={contacts}
+            goldDonorThreshold={Number(systemSettings.goldDonorThreshold)}
+            availableTags={availableTags}
+            currentSort={sortField}
+            currentDir={sortDir}
+            sortParams={sortParams}
+          />
           <div className="px-6 pb-4">
             <Pagination
               currentPage={currentPage}

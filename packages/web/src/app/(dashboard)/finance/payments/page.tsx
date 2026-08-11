@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { formatDate } from "@/lib/utils";
 
 const PAGE_SIZE = 50;
@@ -13,7 +14,7 @@ const PAGE_SIZE = 50;
 export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; type?: string; page?: string; dateFrom?: string; dateTo?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; type?: string; page?: string; dateFrom?: string; dateTo?: string; sort?: string; dir?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
@@ -22,6 +23,8 @@ export default async function PaymentsPage({
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
   const dateFrom = params.dateFrom || "";
   const dateTo = params.dateTo || "";
+  const sortField = params.sort || "paymentDate";
+  const sortDir = (params.dir === "asc" || params.dir === "desc") ? params.dir : "desc";
 
   // Calculate summary metrics
   const thisMonth = new Date();
@@ -73,6 +76,14 @@ export default async function PaymentsPage({
     ],
   };
 
+  // Build dynamic orderBy from sort params
+  const orderByMap: Record<string, any> = {
+    paymentDate: { createdAt: sortDir },
+    amount: { amount: sortDir },
+    status: { status: sortDir },
+  };
+  const orderBy = orderByMap[sortField] || { createdAt: "desc" };
+
   const [payments, totalCount] = await Promise.all([
     prisma.payment.findMany({
       where,
@@ -80,7 +91,7 @@ export default async function PaymentsPage({
         contact: true,
         provider: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip: (currentPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -95,6 +106,16 @@ export default async function PaymentsPage({
   if (typeFilter) paginationParams.type = typeFilter;
   if (dateFrom) paginationParams.dateFrom = dateFrom;
   if (dateTo) paginationParams.dateTo = dateTo;
+  if (sortField && sortField !== "paymentDate") paginationParams.sort = sortField;
+  if (sortDir && sortDir !== "desc") paginationParams.dir = sortDir;
+
+  // Build sort params (all current search params except sort/dir/page, used by SortableHeader)
+  const sortParams: Record<string, string> = {};
+  if (search) sortParams.search = search;
+  if (statusFilter) sortParams.status = statusFilter;
+  if (typeFilter) sortParams.type = typeFilter;
+  if (dateFrom) sortParams.dateFrom = dateFrom;
+  if (dateTo) sortParams.dateTo = dateTo;
 
   const statusColors: Record<string, string> = {
     SUCCEEDED: "bg-green-100 text-green-800",
@@ -217,24 +238,39 @@ export default async function PaymentsPage({
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
+                  <SortableHeader
+                    label="Date"
+                    field="paymentDate"
+                    currentSort={sortField}
+                    currentDir={sortDir}
+                    baseUrl="/finance/payments"
+                    searchParams={sortParams}
+                  />
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Contact
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
+                  <SortableHeader
+                    label="Amount"
+                    field="amount"
+                    currentSort={sortField}
+                    currentDir={sortDir}
+                    baseUrl="/finance/payments"
+                    searchParams={sortParams}
+                  />
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Method
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
+                  <SortableHeader
+                    label="Status"
+                    field="status"
+                    currentSort={sortField}
+                    currentDir={sortDir}
+                    baseUrl="/finance/payments"
+                    searchParams={sortParams}
+                  />
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Provider
                   </th>

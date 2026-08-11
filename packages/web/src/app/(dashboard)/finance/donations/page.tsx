@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { formatDate } from "@/lib/utils";
 
 const PAGE_SIZE = 50;
@@ -13,7 +14,7 @@ const PAGE_SIZE = 50;
 export default async function DonationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; type?: string; page?: string; dateFrom?: string; dateTo?: string }>;
+  searchParams: Promise<{ search?: string; type?: string; page?: string; dateFrom?: string; dateTo?: string; sort?: string; dir?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
@@ -21,6 +22,8 @@ export default async function DonationsPage({
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
   const dateFrom = params.dateFrom || "";
   const dateTo = params.dateTo || "";
+  const sortField = params.sort || "date";
+  const sortDir = (params.dir === "asc" || params.dir === "desc") ? params.dir : "desc";
 
   const where = {
     AND: [
@@ -47,6 +50,14 @@ export default async function DonationsPage({
     ],
   };
 
+  // Build dynamic orderBy from sort params
+  const orderByMap: Record<string, any> = {
+    date: { date: sortDir },
+    amount: { amount: sortDir },
+    type: { type: sortDir },
+  };
+  const orderBy = orderByMap[sortField] || { date: "desc" };
+
   const [donations, totalCount] = await Promise.all([
     prisma.donation.findMany({
       where,
@@ -55,7 +66,7 @@ export default async function DonationsPage({
         campaign: true,
         ledgerCode: true,
       },
-      orderBy: { date: "desc" },
+      orderBy,
       skip: (currentPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -69,6 +80,15 @@ export default async function DonationsPage({
   if (typeFilter) paginationParams.type = typeFilter;
   if (dateFrom) paginationParams.dateFrom = dateFrom;
   if (dateTo) paginationParams.dateTo = dateTo;
+  if (sortField && sortField !== "date") paginationParams.sort = sortField;
+  if (sortDir && sortDir !== "desc") paginationParams.dir = sortDir;
+
+  // Build sort params (all current search params except sort/dir/page, used by SortableHeader)
+  const sortParams: Record<string, string> = {};
+  if (search) sortParams.search = search;
+  if (typeFilter) sortParams.type = typeFilter;
+  if (dateFrom) sortParams.dateFrom = dateFrom;
+  if (dateTo) sortParams.dateTo = dateTo;
 
   const typeColors: Record<string, string> = {
     DONATION: "bg-green-100 text-green-800",
@@ -173,18 +193,33 @@ export default async function DonationsPage({
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
+                  <SortableHeader
+                    label="Date"
+                    field="date"
+                    currentSort={sortField}
+                    currentDir={sortDir}
+                    baseUrl="/finance/donations"
+                    searchParams={sortParams}
+                  />
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Contact
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
+                  <SortableHeader
+                    label="Amount"
+                    field="amount"
+                    currentSort={sortField}
+                    currentDir={sortDir}
+                    baseUrl="/finance/donations"
+                    searchParams={sortParams}
+                  />
+                  <SortableHeader
+                    label="Type"
+                    field="type"
+                    currentSort={sortField}
+                    currentDir={sortDir}
+                    baseUrl="/finance/donations"
+                    searchParams={sortParams}
+                  />
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Campaign
                   </th>

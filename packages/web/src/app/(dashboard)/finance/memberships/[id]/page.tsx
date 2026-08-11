@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import Link from "next/link";
-import { ArrowLeft, Trash2, RotateCw, ToggleLeft, ToggleRight } from "lucide-react";
+import { ArrowLeft, Trash2, RotateCw, ToggleLeft, ToggleRight, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,14 @@ export default async function MembershipDetailPage({
 
   if (!membership) notFound();
 
+  // Fetch audit logs for this membership
+  const auditLogs = await prisma.auditLog.findMany({
+    where: { entityType: "Membership", entityId: id },
+    include: { user: true },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
   const statusColors: Record<string, string> = {
     ACTIVE: "bg-green-100 text-green-800",
     EXPIRED: "bg-red-100 text-red-800",
@@ -39,8 +47,27 @@ export default async function MembershipDetailPage({
     LAPSED: "bg-orange-100 text-orange-800",
   };
 
+  const actionColors: Record<string, string> = {
+    CREATE: "bg-green-100 text-green-800",
+    UPDATE: "bg-blue-100 text-blue-800",
+    DELETE: "bg-red-100 text-red-800",
+  };
+
+  function formatChanges(changes: any): string {
+    if (!changes || typeof changes !== "object") return "";
+    return Object.entries(changes)
+      .map(([field, vals]: [string, any]) => {
+        const oldVal = vals.old ?? "—";
+        const newVal = vals.new ?? "—";
+        return `${field}: ${oldVal} → ${newVal}`;
+      })
+      .join(", ");
+  }
+
   async function renewMembership() {
     "use server";
+    const session = await requireAuth();
+
     const now = new Date();
     const currentMembership = await prisma.membership.findUnique({
       where: { id },
@@ -48,6 +75,9 @@ export default async function MembershipDetailPage({
     });
 
     if (!currentMembership) return;
+
+    const oldEndDate = currentMembership.endDate.toISOString().split("T")[0];
+    const oldStatus = currentMembership.status;
 
     const newEndDate = new Date(currentMembership.endDate);
     newEndDate.setMonth(newEndDate.getMonth() + currentMembership.membershipType.duration);
@@ -71,11 +101,34 @@ export default async function MembershipDetailPage({
       },
     });
 
+    // Create audit log for renewal
+    const changes: Record<string, { old: any; new: any }> = {
+      endDate: { old: oldEndDate, new: newEndDate.toISOString().split("T")[0] },
+    };
+    if (oldStatus !== "ACTIVE") {
+      changes.status = { old: oldStatus, new: "ACTIVE" };
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        entityType: "Membership",
+        entityId: id,
+        action: "UPDATE",
+        changes,
+        userId: session.id,
+      },
+    });
+
     revalidatePath(`/finance/memberships/${id}`);
   }
 
   async function cancelMembership(formData: FormData) {
     "use server";
+    const session = await requireAuth();
+
+    const existing = await prisma.membership.findUnique({ where: { id } });
+    if (!existing) return;
+
     const reason = formData.get("cancelReason") as string;
 
     await prisma.membership.update({
@@ -87,17 +140,48 @@ export default async function MembershipDetailPage({
       },
     });
 
+    // Create audit log for cancellation
+    await prisma.auditLog.create({
+      data: {
+        entityType: "Membership",
+        entityId: id,
+        action: "UPDATE",
+        changes: {
+          status: { old: existing.status, new: "CANCELLED" },
+        },
+        userId: session.id,
+      },
+    });
+
     revalidatePath(`/finance/memberships/${id}`);
   }
 
   async function toggleAutoRenew() {
     "use server";
+    const session = await requireAuth();
+
     const current = await prisma.membership.findUnique({ where: { id } });
     if (!current) return;
+
+    const newAutoRenew = !current.autoRenew;
+
     await prisma.membership.update({
       where: { id },
       data: {
-        autoRenew: !current.autoRenew,
+        autoRenew: newAutoRenew,
+      },
+    });
+
+    // Create audit log for auto-renew toggle
+    await prisma.auditLog.create({
+      data: {
+        entityType: "Membership",
+        entityId: id,
+        action: "UPDATE",
+        changes: {
+          autoRenew: { old: current.autoRenew, new: newAutoRenew },
+        },
+        userId: session.id,
       },
     });
 
@@ -106,8 +190,36 @@ export default async function MembershipDetailPage({
 
   async function deleteMembership() {
     "use server";
+    const session = await requireAuth();
+
+    const existing = await prisma.membership.findUnique({ where: { id } });
+
     await prisma.membership.delete({
       where: { id },
+    });
+
+    // Create audit log for deletion
+    await prisma.auditLog.create({
+      data: {
+        entityType: "Membership",
+        entityId: id,
+        action: "DELETE",
+        changes: existing
+          ? {
+              status: { old: existing.status, new: null },
+              autoRenew: { old: existing.autoRenew, new: null },
+              startDate: {
+                old: existing.startDate.toISOString().split("T")[0],
+                new: null,
+              },
+              endDate: {
+                old: existing.endDate.toISOString().split("T")[0],
+                new: null,
+              },
+            }
+          : null,
+        userId: session.id,
+      },
     });
 
     revalidatePath("/finance/memberships");
@@ -390,6 +502,62 @@ export default async function MembershipDetailPage({
           <Button variant="outline">Back</Button>
         </Link>
       </div>
+
+      {/* Activity Log */}
+      <Card>
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-gray-900">Activity Log</h3>
+        </CardHeader>
+        <CardContent>
+          {auditLogs.length === 0 ? (
+            <div className="text-center py-8">
+              <Clock className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-500">No activity recorded yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      User
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Action
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Changes
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {auditLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {formatDate(log.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-900">
+                        {log.user.name}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={actionColors[log.action] || "bg-gray-100 text-gray-800"}>
+                          {log.action}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {formatChanges(log.changes)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
