@@ -20,15 +20,16 @@ export default async function SubscriptionsPage({
   // Calculate summary metrics
   const [
     activeCount,
-    monthlyRevenueData,
+    activeSubscriptions,
     pausedCount,
     totalCount,
   ] = await Promise.all([
     prisma.subscription.count({
       where: { status: "ACTIVE" },
     }),
-    prisma.subscription.aggregate({
-      where: { status: "ACTIVE", frequency: "MONTHLY" },
+    prisma.subscription.groupBy({
+      by: ["frequency"],
+      where: { status: "ACTIVE" },
       _sum: { amount: true },
     }),
     prisma.subscription.count({
@@ -36,6 +37,20 @@ export default async function SubscriptionsPage({
     }),
     prisma.subscription.count({}),
   ]);
+
+  // Normalise all frequencies to monthly equivalent
+  const frequencyMultipliers: Record<string, number> = {
+    WEEKLY: 52 / 12,
+    FORTNIGHTLY: 26 / 12,
+    MONTHLY: 1,
+    QUARTERLY: 1 / 3,
+    ANNUAL: 1 / 12,
+    YEARLY: 1 / 12,
+  };
+  const monthlyRevenue = activeSubscriptions.reduce((total, group) => {
+    const multiplier = frequencyMultipliers[group.frequency] || 1;
+    return total + (Number(group._sum.amount) || 0) * multiplier;
+  }, 0);
 
   const subscriptions = await prisma.subscription.findMany({
     where: {
@@ -99,7 +114,7 @@ export default async function SubscriptionsPage({
         <Card className="p-6">
           <div className="text-sm font-medium text-gray-600 mb-1">Monthly Revenue</div>
           <div className="text-3xl font-bold text-gray-900">
-            £{(monthlyRevenueData._sum.amount || 0).toFixed(2)}
+            £{monthlyRevenue.toFixed(2)}
           </div>
         </Card>
         <Card className="p-6">

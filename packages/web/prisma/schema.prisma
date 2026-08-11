@@ -17,9 +17,9 @@ model SystemSettings {
   financialYearEndDay   Int    @default(31) // day of month
 
   // ── Annual events targets ──
-  eventsIncomeTarget Float? // Annual target income from events e.g. 400000
-  eventsCostBudget   Float? // Annual predicted cost budget e.g. 250000
-  eventsProfitTarget Float? // Annual profit target
+  eventsIncomeTarget Decimal? // Annual target income from events e.g. 400000
+  eventsCostBudget   Decimal? // Annual predicted cost budget e.g. 250000
+  eventsProfitTarget Decimal? // Annual profit target
 
   // ── White-label branding ──
   orgName           String? // Display name (replaces "Parity CRM" in sidebar)
@@ -65,7 +65,7 @@ model SystemSettings {
   loqateApiKey String? // Loqate API key for address verification
 
   // ── Donor Recognition ──
-  goldDonorThreshold Float @default(1000) // Lifetime donation amount (£) to earn Gold Donor status
+  goldDonorThreshold Decimal @default(1000) // Lifetime donation amount (£) to earn Gold Donor status
 
   updatedAt DateTime @updatedAt
 }
@@ -285,6 +285,14 @@ model Contact {
   autoTasks                  AutoTask[]                  @relation("AutoTaskContact")
   retailGiftAidNotifications RetailGiftAidNotification[]
   softCredits                SoftCredit[]
+  giftAidClaimItems           GiftAidClaimItem[]
+
+  @@index([email])
+  @@index([lastName, firstName])
+  @@index([status])
+  @@index([organisationId])
+  @@index([createdAt])
+  @@index([postcode])
 }
 
 model Organisation {
@@ -369,6 +377,9 @@ model Interaction {
 
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   createdBy User    @relation("InteractionCreatedBy", fields: [createdById], references: [id])
+
+  @@index([contactId])
+  @@index([date])
 }
 
 model Note {
@@ -381,6 +392,8 @@ model Note {
 
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   createdBy User    @relation("NoteCreatedBy", fields: [createdById], references: [id])
+
+  @@index([contactId])
 }
 
 // ============================================
@@ -487,6 +500,9 @@ model VolunteerHoursLog {
   volunteer  VolunteerProfile @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
   department Department?      @relation(fields: [departmentId], references: [id])
   verifiedBy User?            @relation("VerifiedByUser", fields: [verifiedById], references: [id])
+
+  @@index([volunteerId])
+  @@index([date])
 }
 
 model ActivityRecord {
@@ -544,6 +560,9 @@ model Assignment {
   department Department           @relation(fields: [departmentId], references: [id])
   createdBy  User                 @relation("AssignmentCreatedBy", fields: [createdById], references: [id])
   reminders  AssignmentReminder[]
+
+  @@index([volunteerId])
+  @@index([status])
 }
 
 model AssignmentReminder {
@@ -581,6 +600,9 @@ model Notification {
   updatedAt   DateTime  @updatedAt
 
   recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+  @@index([createdAt])
 }
 
 // Push device tokens for mobile app notifications
@@ -624,6 +646,8 @@ model Broadcast {
   createdBy  User                @relation("BroadcastCreatedBy", fields: [createdById], references: [id])
   skills     BroadcastSkill[]
   responses  BroadcastResponse[]
+
+  @@index([status])
 }
 
 model BroadcastSkill {
@@ -651,6 +675,9 @@ model BroadcastResponse {
   broadcast   Broadcast        @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
   volunteer   VolunteerProfile @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
   confirmedBy User?            @relation("BroadcastConfirmedBy", fields: [confirmedById], references: [id])
+
+  @@index([broadcastId])
+  @@index([volunteerId])
 }
 
 // ============================================
@@ -702,9 +729,12 @@ model GiftAid {
   cessationDate       DateTime?
   cessationNotes      String?
 
-  contact   Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact   Contact        @relation(fields: [contactId], references: [id], onDelete: Restrict)
   createdBy User           @relation("GiftAidCreatedBy", fields: [createdById], references: [id])
   pauses    GiftAidPause[]
+
+  @@index([contactId])
+  @@index([status])
 }
 
 model GiftAidPause {
@@ -747,7 +777,7 @@ model LedgerCode {
 model Donation {
   id             String   @id @default(cuid())
   contactId      String
-  amount         Float
+  amount         Decimal
   currency       String   @default("GBP")
   type           String // DONATION | PAYMENT | GIFT | EVENT_FEE | SPONSORSHIP | LEGACY | GRANT | IN_KIND
   method         String? // CASH | CHEQUE | CARD | DIRECT_DEBIT | STANDING_ORDER | BANK_TRANSFER | ONLINE | OTHER
@@ -765,7 +795,7 @@ model Donation {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  contact        Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact        Contact        @relation(fields: [contactId], references: [id], onDelete: Restrict)
   ledgerCode     LedgerCode?    @relation(fields: [ledgerCodeId], references: [id])
   campaign       Campaign?      @relation(fields: [campaignId], references: [id])
   event          Event?         @relation(fields: [eventId], references: [id])
@@ -773,7 +803,16 @@ model Donation {
   pledgePayment  PledgePayment? @relation("PledgePayment")
   bankDocumentId String?
   bankDocument   BankDocument?  @relation(fields: [bankDocumentId], references: [id])
-  softCredits    SoftCredit[]
+  softCredits       SoftCredit[]
+  giftAidClaimItems GiftAidClaimItem[]
+
+  @@index([contactId])
+  @@index([date])
+  @@index([campaignId])
+  @@index([eventId])
+  @@index([status])
+  @@index([ledgerCodeId])
+  @@index([createdAt])
 }
 
 model DonationType {
@@ -818,13 +857,13 @@ model SoftCredit {
   id         String   @id @default(cuid())
   donationId String
   contactId  String
-  amount     Float
+  amount     Decimal
   notes      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   donation Donation @relation(fields: [donationId], references: [id], onDelete: Cascade)
-  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Restrict)
 }
 
 // ============================================
@@ -884,10 +923,10 @@ model Event {
 model EventFinance {
   id           String    @id @default(cuid())
   eventId      String    @unique
-  incomeTarget Float     @default(0) // Target total income (£)
-  costTarget   Float     @default(0) // Target total costs (£)
-  profitTarget Float     @default(0) // Target profit (£)
-  finalTakings Float? // Final total after event completion
+  incomeTarget Decimal   @default(0) // Target total income (£)
+  costTarget   Decimal   @default(0) // Target total costs (£)
+  profitTarget Decimal   @default(0) // Target profit (£)
+  finalTakings Decimal? // Final total after event completion
   completedAt  DateTime?
   notes        String? // Completion notes
   createdAt    DateTime  @default(now())
@@ -903,8 +942,8 @@ model EventIncomeLine {
   category       String // REGISTRATION_FEES | TICKET_SALES | BUCKET_COLLECTION | DONATIONS_ON_DAY | PITCH_FEES | SPONSORSHIP | MERCHANDISE | RAFFLE | AUCTION | OTHER
   label          String // Display label e.g. "Early Bird Tickets"
   description    String?
-  estimated      Float    @default(0) // Budgeted / estimated amount
-  actual         Float    @default(0) // Actual amount received
+  estimated      Decimal  @default(0) // Budgeted / estimated amount
+  actual         Decimal  @default(0) // Actual amount received
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -923,8 +962,8 @@ model EventCostLine {
   category       String // VENUE_HIRE | CATERING | ENTERTAINMENT | EQUIPMENT | MARKETING | INSURANCE | STAFFING | TRANSPORT | PRINTING | LICENSES | DECORATIONS | FIRST_AID | SECURITY | WASTE_DISPOSAL | OTHER
   label          String // Display label e.g. "Main Hall Hire"
   description    String?
-  estimated      Float    @default(0) // Budgeted / estimated amount
-  actual         Float    @default(0) // Actual amount paid
+  estimated      Decimal  @default(0) // Budgeted / estimated amount
+  actual         Decimal  @default(0) // Actual amount paid
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -950,16 +989,16 @@ model FundraisingPage {
   pageUrl      String // full URL to the page
   pageSlug     String // extracted slug for API calls
   title        String? // e.g. "Ross's 3000 Mile Bike Ride"
-  targetAmount Float? // fundraising target
-  totalRaised  Float     @default(0)
-  giftAidTotal Float     @default(0)
+  targetAmount Decimal? // fundraising target
+  totalRaised  Decimal   @default(0)
+  giftAidTotal Decimal   @default(0)
   currency     String    @default("GBP")
   isActive     Boolean   @default(true)
   lastSyncAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  contact   Contact               @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact   Contact               @relation(fields: [contactId], references: [id], onDelete: Restrict)
   event     Event?                @relation(fields: [eventId], references: [id])
   donations FundraisingDonation[]
 
@@ -972,11 +1011,11 @@ model FundraisingDonation {
   fundraisingPageId   String
   externalId          String   @unique // JG donation ID etc. to prevent duplicates
   donorDisplayName    String? // public display name from the platform
-  amount              Float
+  amount              Decimal
   currencyCode        String   @default("GBP")
   donationDate        DateTime
   message             String?
-  estimatedTaxReclaim Float?
+  estimatedTaxReclaim Decimal?
   isGiftAidEligible   Boolean  @default(false)
   imageUrl            String? // donor avatar from platform
   donationId          String? // linked to main Donation record in finance
@@ -1011,7 +1050,7 @@ model EventMerchandise {
   name         String
   description  String?
   quantity     Int      @default(0)
-  unitPrice    Float?
+  unitPrice    Decimal?
   quantitySold Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -1026,7 +1065,7 @@ model EventSponsor {
   name             String // sponsor name (if no org link)
   logoUrl          String?
   sponsorshipLevel String   @default("MINOR") // HEADLINE | MAJOR | MINOR | IN_KIND
-  amount           Float?
+  amount           Decimal?
   notes            String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -1090,7 +1129,7 @@ model EventFormItem {
   name              String
   description       String?
   type              String // REGISTRATION_FEE | MERCHANDISE | DONATION
-  price             Float? // null for DONATION (user enters amount)
+  price             Decimal? // null for DONATION (user enters amount)
   isRequired        Boolean  @default(false)
   isGiftAidEligible Boolean  @default(false)
   maxQuantity       Int? // stock limit for merchandise
@@ -1113,9 +1152,9 @@ model EventOrder {
   orderNumber String @unique
 
   // Totals
-  subtotal     Float
-  giftAidTotal Float @default(0)
-  totalAmount  Float
+  subtotal     Decimal
+  giftAidTotal Decimal @default(0)
+  totalAmount  Decimal
 
   // Status
   status           String  @default("PENDING") // PENDING | CONFIRMED | CANCELLED | REFUNDED
@@ -1148,8 +1187,8 @@ model OrderLineItem {
   orderId           String
   itemId            String
   quantity          Int      @default(1)
-  unitPrice         Float
-  total             Float
+  unitPrice         Decimal
+  total             Decimal
   isGiftAidEligible Boolean  @default(false)
   variant           String? // e.g. "Size: L"
   createdAt         DateTime @default(now())
@@ -1161,7 +1200,7 @@ model OrderLineItem {
 model EventPayment {
   id        String   @id @default(cuid())
   orderId   String
-  amount    Float
+  amount    Decimal
   method    String // STRIPE | GOCARDLESS
   status    String // PENDING | SUCCEEDED | FAILED | REFUNDED
   reference String? // external payment ID (pi_xxx, pm_xxx)
@@ -1184,8 +1223,8 @@ model Campaign {
   ledgerCodeId String?
   startDate    DateTime?
   endDate      DateTime?
-  budgetTarget Float?
-  actualRaised Float     @default(0)
+  budgetTarget Decimal?
+  actualRaised Decimal   @default(0)
   status       String    @default("DRAFT") // DRAFT | ACTIVE | PAUSED | COMPLETED | CANCELLED
   createdById  String
   createdAt    DateTime  @default(now())
@@ -1281,7 +1320,7 @@ model CollectionTinMovement {
   tinId     String
   type      String // DEPLOYED | COLLECTED | COUNTED | LOST | STOLEN | RETURNED
   date      DateTime
-  amount    Float? // amount collected (if counted)
+  amount    Decimal? // amount collected (if counted)
   notes     String?
   routeId   String?
   stopId    String?
@@ -1382,7 +1421,7 @@ model TinReturn {
   id          String   @id @default(cuid())
   tinId       String
   runId       String?
-  amount      Float
+  amount      Decimal
   countedById String
   returnedAt  DateTime @default(now())
   notes       String?
@@ -1407,7 +1446,7 @@ model TributeFund {
   description String?
   inMemoryOf  String? // name of person being remembered
   status      String   @default("ACTIVE") // ACTIVE | CLOSED
-  totalRaised Float    @default(0)
+  totalRaised Decimal  @default(0)
   createdById String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1486,7 +1525,7 @@ model DBSCheck {
   certificateNumber String?
   level             String   @default("BASIC") // BASIC | STANDARD | ENHANCED
   status            String   @default("PENDING") // PENDING | CLEARED | ISSUES_FOUND | EXPIRED
-  cost              Float?
+  cost              Decimal?
   documentUrl       String?
   notes             String?
   createdAt         DateTime @default(now())
@@ -1873,7 +1912,7 @@ model PaymentProvider {
 model Payment {
   id             String    @id @default(cuid())
   contactId      String
-  amount         Float
+  amount         Decimal
   currency       String    @default("GBP")
   status         String    @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED | CANCELLED
   type           String // ONE_OFF | SUBSCRIPTION | EVENT_FEE | MEMBERSHIP_FEE
@@ -1904,7 +1943,7 @@ model Payment {
 model Subscription {
   id              String    @id @default(cuid())
   contactId       String
-  amount          Float
+  amount          Decimal
   currency        String    @default("GBP")
   frequency       String // WEEKLY | MONTHLY | QUARTERLY | ANNUALLY
   status          String    @default("ACTIVE") // ACTIVE | PAUSED | CANCELLED | EXPIRED
@@ -1935,7 +1974,7 @@ model MembershipType {
   id                  String   @id @default(cuid())
   name                String   @unique
   description         String?
-  price               Float
+  price               Decimal
   currency            String   @default("GBP")
   duration            Int      @default(12) // months
   benefits            String?
@@ -1961,7 +2000,7 @@ model Membership {
   renewalDate      DateTime?
   lastRenewalDate  DateTime? // Date of the last successful renewal
   autoRenew        Boolean   @default(false)
-  amountPaid       Float?
+  amountPaid       Decimal?
   paymentMethod    String?
   paymentReference String?
   notes            String?
@@ -1970,7 +2009,7 @@ model Membership {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  contact          Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact          Contact             @relation(fields: [contactId], references: [id], onDelete: Restrict)
   membershipType   MembershipType      @relation(fields: [membershipTypeId], references: [id])
   renewals         MembershipRenewal[]
   renewalReminders RenewalReminder[]
@@ -1985,7 +2024,7 @@ model MembershipRenewal {
   membershipId     String
   fromDate         DateTime
   toDate           DateTime
-  amount           Float
+  amount           Decimal
   paymentMethod    String?
   paymentReference String?
   renewedAt        DateTime @default(now())
@@ -2017,8 +2056,8 @@ model GiftAidClaim {
   claimReference        String    @unique
   claimType             String    @default("STANDARD") // STANDARD | RETAIL
   status                String    @default("DRAFT") // DRAFT | NOTIFICATIONS_SENT | READY | SUBMITTED | ACCEPTED | REJECTED | PARTIAL
-  totalDonations        Float     @default(0)
-  totalClaimable        Float     @default(0)
+  totalDonations        Decimal   @default(0)
+  totalClaimable        Decimal   @default(0)
   donationCount         Int       @default(0)
   periodStart           DateTime
   periodEnd             DateTime
@@ -2028,12 +2067,12 @@ model GiftAidClaim {
   acceptedAt            DateTime?
   rejectedAt            DateTime?
   rejectionReason       String?
-  amountReceived        Float?
+  amountReceived        Decimal?
   receivedAt            DateTime?
   correlationId         String? // HMRC submission correlation ID for polling
   submissionXml         String? // Stored XML for audit
   responseXml           String? // HMRC response XML
-  gasdsAmount           Float? // Small Donations Scheme amount if applicable
+  gasdsAmount           Decimal? // Small Donations Scheme amount if applicable
   isTestMode            Boolean   @default(false) // true = test submission, not sent to real HMRC
   submittedById         String? // User who submitted to HMRC
   notes                 String?
@@ -2063,16 +2102,19 @@ model GiftAidClaimItem {
   donorAddress   String?
   donorPostcode  String?
   donationDate   DateTime
-  donationAmount Float
-  giftAidAmount  Float
+  donationAmount Decimal
+  giftAidAmount  Decimal
   status         String   @default("INCLUDED") // INCLUDED | EXCLUDED | ERROR
   errorReason    String?
   createdAt      DateTime @default(now())
 
-  claim GiftAidClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim    GiftAidClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  donation Donation     @relation(fields: [donationId], references: [id], onDelete: Restrict)
+  contact  Contact      @relation(fields: [contactId], references: [id], onDelete: Restrict)
 
   @@index([claimId])
   @@index([donationId])
+  @@index([contactId])
 }
 
 // Tracks individual notifications sent to donors for Retail Gift Aid claims
@@ -2167,7 +2209,7 @@ model FormSubmission {
   ipAddress       String?
   userAgent       String?
   referrer        String?
-  amount          Float?
+  amount          Decimal?
   isRecurring     Boolean   @default(false)
   giftAidDeclared Boolean   @default(false)
   status          String    @default("RECEIVED") // RECEIVED | PROCESSED | SPAM | ERROR
@@ -2191,8 +2233,8 @@ model Grant {
   funderId            String?
   type                String    @default("TRUST") // TRUST | FOUNDATION | GOVERNMENT | CORPORATE | LOTTERY | OTHER
   status              String    @default("IDENTIFIED") // IDENTIFIED | RESEARCHING | APPLYING | SUBMITTED | SUCCESSFUL | UNSUCCESSFUL | REPORTING | COMPLETED
-  amountRequested     Float?
-  amountAwarded       Float?
+  amountRequested     Decimal?
+  amountAwarded       Decimal?
   currency            String    @default("GBP")
   applicationDeadline DateTime?
   submittedDate       DateTime?
@@ -2324,7 +2366,7 @@ model GrantRestriction {
   id          String   @id @default(cuid())
   grantId     String
   description String
-  amount      Float?
+  amount      Decimal?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -2338,7 +2380,7 @@ model GrantRestrictionEvidence {
   id            String   @id @default(cuid())
   restrictionId String
   description   String
-  amount        Float?
+  amount        Decimal?
   fileName      String?
   fileType      String?
   fileData      String?  // base64 data URL
@@ -2353,7 +2395,7 @@ model GrantInstalment {
   id           String    @id @default(cuid())
   grantId      String
   periodLabel  String    // "Year 1", "Month 3", etc.
-  amount       Float
+  amount       Decimal
   expectedDate DateTime
   receivedDate DateTime?
   received     Boolean   @default(false)
@@ -2376,8 +2418,8 @@ model Legacy {
   contactId           String?
   status              String    @default("NOTIFIED") // NOTIFIED | INVESTIGATING | PROBATE | AWAITING_PAYMENT | RECEIVED | PARTIAL | DISPUTED | CLOSED
   type                String    @default("PECUNIARY") // PECUNIARY | RESIDUARY | SPECIFIC | REVERSIONARY | LIFE_INTEREST
-  estimatedAmount     Float?
-  receivedAmount      Float?
+  estimatedAmount     Decimal?
+  receivedAmount      Decimal?
   currency            String    @default("GBP")
   executorName        String?
   executorEmail       String?
@@ -2430,7 +2472,7 @@ model CaseRecord {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  contact    Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact    Contact        @relation(fields: [contactId], references: [id], onDelete: Restrict)
   assignedTo User?          @relation("CaseAssignedTo", fields: [assignedToId], references: [id])
   createdBy  User           @relation("CaseCreatedBy", fields: [createdById], references: [id])
   activities CaseActivity[]
@@ -2674,7 +2716,7 @@ model DonorOpportunity {
   name              String
   description       String?
   stage             String    @default("IDENTIFICATION") // IDENTIFICATION | QUALIFICATION | CULTIVATION | SOLICITATION | NEGOTIATION | CLOSED_WON | CLOSED_LOST
-  amount            Float     @default(0)
+  amount            Decimal   @default(0)
   probability       Int       @default(10) // 0-100
   expectedCloseDate DateTime?
   actualCloseDate   DateTime?
@@ -2708,9 +2750,9 @@ model BankTransaction {
   date              DateTime
   description       String
   reference         String?
-  amount            Float
+  amount            Decimal
   type              String   @default("CREDIT") // CREDIT | DEBIT
-  balance           Float?
+  balance           Decimal?
   bankAccount       String?
   status            String   @default("UNMATCHED") // UNMATCHED | MATCHED | EXCLUDED
   matchedDonationId String?
@@ -2750,8 +2792,8 @@ model GasdsClaim {
   taxYear             String
   claimPeriodStart    DateTime
   claimPeriodEnd      DateTime
-  totalSmallDonations Float        @default(0)
-  claimAmount         Float        @default(0)
+  totalSmallDonations Decimal      @default(0)
+  claimAmount         Decimal      @default(0)
   status              String       @default("DRAFT") // DRAFT | READY | SUBMITTED | ACCEPTED | REJECTED
   hmrcReference       String?
   submittedAt         DateTime?
@@ -2774,7 +2816,7 @@ model GasdsEntry {
   date          DateTime
   source        String     @default("CASH") // CASH | CONTACTLESS | COLLECTION_TIN
   description   String?
-  amount        Float
+  amount        Decimal
   donationId    String?
   tinLocationId String?
   createdAt     DateTime   @default(now())
@@ -2878,7 +2920,7 @@ model Pledge {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  contact   Contact         @relation("PledgeContact", fields: [contactId], references: [id], onDelete: Cascade)
+  contact   Contact         @relation("PledgeContact", fields: [contactId], references: [id], onDelete: Restrict)
   campaign  Campaign?       @relation("PledgeCampaign", fields: [campaignId], references: [id], onDelete: SetNull)
   createdBy User            @relation("PledgeCreatedBy", fields: [createdById], references: [id])
   payments  PledgePayment[]

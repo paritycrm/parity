@@ -87,13 +87,13 @@ export default async function PledgesPage({
         <Card className="p-4">
           <p className="text-sm text-gray-600">Total Amount</p>
           <p className="text-3xl font-bold text-gray-900">
-            £{(stats.totalAmount / 100).toFixed(2)}
+            £{Number(stats.totalAmount).toFixed(2)}
           </p>
         </Card>
         <Card className="p-4">
           <p className="text-sm text-gray-600">Total Fulfilled</p>
           <p className="text-3xl font-bold text-gray-900">
-            £{(stats.totalFulfilled / 100).toFixed(2)}
+            £{Number(stats.totalFulfilled).toFixed(2)}
           </p>
         </Card>
         <Card className="p-4">
