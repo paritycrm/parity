@@ -5,40 +5,57 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { formatDate } from "@/lib/utils";
+
+const PAGE_SIZE = 50;
 
 export default async function GiftAidPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; type?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; type?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
   const typeFilter = params.type || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
-  const giftAids = await prisma.giftAid.findMany({
-    where: {
-      AND: [
-        search
-          ? {
-              OR: [
-                { contact: { firstName: { contains: search } } },
-                { contact: { lastName: { contains: search } } },
-              ],
-            }
-          : {},
-        statusFilter ? { status: statusFilter } : {},
-        typeFilter ? { type: typeFilter } : {},
-      ],
-    },
-    include: {
-      contact: true,
-      createdBy: true,
-    },
-    orderBy: { declarationDate: "desc" },
-    take: 50,
-  });
+  const where = {
+    AND: [
+      search
+        ? {
+            OR: [
+              { contact: { firstName: { contains: search } } },
+              { contact: { lastName: { contains: search } } },
+            ],
+          }
+        : {},
+      statusFilter ? { status: statusFilter } : {},
+      typeFilter ? { type: typeFilter } : {},
+    ],
+  };
+
+  const [giftAids, totalCount] = await Promise.all([
+    prisma.giftAid.findMany({
+      where,
+      include: {
+        contact: true,
+        createdBy: true,
+      },
+      orderBy: { declarationDate: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.giftAid.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (typeFilter) paginationParams.type = typeFilter;
+  if (statusFilter) paginationParams.status = statusFilter;
 
   const statusColors: Record<string, string> = {
     ACTIVE: "bg-green-100 text-green-800",
@@ -51,7 +68,7 @@ export default async function GiftAidPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gift Aid Declarations</h1>
-          <p className="text-gray-500 mt-1">Manage Gift Aid declarations from donors</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} declarations</p>
         </div>
         <Link href="/finance/gift-aid/new">
           <Button>
@@ -167,6 +184,14 @@ export default async function GiftAidPage({
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/finance/gift-aid"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
         </Card>
       )}
     </div>

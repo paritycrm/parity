@@ -5,40 +5,56 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { formatDate, formatCurrency } from "@/lib/utils";
+
+const PAGE_SIZE = 50;
 
 export default async function PledgesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
-  const pledges = await prisma.pledge.findMany({
-    where: {
-      AND: [
-        search
-          ? {
-              OR: [
-                { contact: { firstName: { contains: search } } },
-                { contact: { lastName: { contains: search } } },
-                { contact: { email: { contains: search } } },
-              ],
-            }
-          : {},
-        statusFilter ? { status: statusFilter } : {},
-      ],
-    },
-    include: {
-      contact: true,
-      campaign: true,
-      payments: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const where = {
+    AND: [
+      search
+        ? {
+            OR: [
+              { contact: { firstName: { contains: search } } },
+              { contact: { lastName: { contains: search } } },
+              { contact: { email: { contains: search } } },
+            ],
+          }
+        : {},
+      statusFilter ? { status: statusFilter } : {},
+    ],
+  };
+
+  const [pledges, totalCount] = await Promise.all([
+    prisma.pledge.findMany({
+      where,
+      include: {
+        contact: true,
+        campaign: true,
+        payments: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.pledge.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (statusFilter) paginationParams.status = statusFilter;
 
   // Calculate stats
   const stats = {
@@ -68,7 +84,7 @@ export default async function PledgesPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pledges</h1>
-          <p className="text-gray-500 mt-1">Track and manage pledge commitments</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} pledges</p>
         </div>
         <Link href="/finance/pledges/new">
           <Button>
@@ -183,13 +199,13 @@ export default async function PledgesPage({
                       </Link>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      £{pledge.amount.toFixed(2)}
+                      £{Number(pledge.amount).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {frequencyLabels[pledge.frequency] || pledge.frequency}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      £{pledge.totalFulfilled.toFixed(2)}
+                      £{Number(pledge.totalFulfilled).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {pledge.campaign?.name || "—"}
@@ -207,6 +223,14 @@ export default async function PledgesPage({
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/finance/pledges"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
         </Card>
       )}
     </div>

@@ -11,17 +11,21 @@ import { Input } from "@/components/ui/input";
 import { getStatusColor, formatDate } from "@/lib/utils";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Pagination } from "@/components/ui/pagination";
 import { logAudit } from "@/lib/audit";
+
+const PAGE_SIZE = 100;
 
 export default async function HoursPage({
   searchParams,
 }: {
-  searchParams: Promise<{ volunteer?: string; department?: string; status?: string }>;
+  searchParams: Promise<{ volunteer?: string; department?: string; status?: string; page?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const filters = await searchParams;
+  const currentPage = Math.max(1, parseInt(filters.page || "1", 10) || 1);
 
   // Build where clause for filtering
   const where: Record<string, unknown> = {};
@@ -35,7 +39,7 @@ export default async function HoursPage({
     where.status = filters.status;
   }
 
-  const [hoursLogs, volunteers, departments] = await Promise.all([
+  const [hoursLogs, totalCount, volunteers, departments] = await Promise.all([
     prisma.volunteerHoursLog.findMany({
       where,
       include: {
@@ -44,8 +48,10 @@ export default async function HoursPage({
         verifiedBy: true,
       },
       orderBy: { createdAt: "desc" },
-      take: 100,
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
+    prisma.volunteerHoursLog.count({ where }),
     prisma.volunteerProfile.findMany({
       where: { status: { not: "DEPARTED" } },
       include: { contact: true },
@@ -56,6 +62,13 @@ export default async function HoursPage({
       orderBy: { name: "asc" },
     }),
   ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (filters.volunteer) paginationParams.volunteer = filters.volunteer;
+  if (filters.department) paginationParams.department = filters.department;
+  if (filters.status) paginationParams.status = filters.status;
 
   const pendingCount = hoursLogs.filter((h) => h.status === "LOGGED" || h.status === "APPROVED").length;
   const totalHoursShown = hoursLogs.reduce((sum, h) => sum + h.hours, 0);
@@ -116,7 +129,7 @@ export default async function HoursPage({
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Volunteer Hours</h1>
           <p className="text-gray-500 mt-1">
-            Log hours quickly, then verify them below.
+            {totalCount.toLocaleString()} hour logs
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -312,6 +325,14 @@ export default async function HoursPage({
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          baseUrl="/volunteers/hours"
+          totalItems={totalCount}
+          pageSize={PAGE_SIZE}
+          searchParams={paginationParams}
+        />
       </Card>
     </div>
   );

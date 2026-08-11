@@ -35,6 +35,7 @@ export default async function ComplianceDashboardPage() {
     activitiesWithoutDpa,
     highCriticalRisks,
     recentConsents,
+    openClinicalHazards,
   ] = await Promise.all([
     // DPIA counts by status
     prisma.dpia.count({ where: { status: "DRAFT" } }),
@@ -93,6 +94,11 @@ export default async function ComplianceDashboardPage() {
       take: 10,
       orderBy: { recordedAt: "desc" },
       include: { recordedBy: true },
+    }),
+
+    // Open clinical hazards count
+    prisma.clinicalHazard.count({
+      where: { status: { not: "CLOSED" } },
     }),
   ]);
 
@@ -172,11 +178,12 @@ export default async function ComplianceDashboardPage() {
     {
       icon: Zap,
       label: "Clinical Hazards",
-      value: "0",
-      subtext: "No hazards recorded",
-      alert: false,
-      alertText: null,
-      href: "/compliance/hazards",
+      value: openClinicalHazards,
+      subtext: openClinicalHazards === 0 ? "No open hazards" : `${openClinicalHazards} open hazard${openClinicalHazards !== 1 ? "s" : ""}`,
+      alert: openClinicalHazards > 0,
+      alertText: openClinicalHazards > 0 ? `${openClinicalHazards} open hazard${openClinicalHazards !== 1 ? "s" : ""}` : null,
+      alertColor: "text-red-600",
+      href: "/compliance/clinical-safety",
     },
   ];
 

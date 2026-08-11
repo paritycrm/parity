@@ -5,41 +5,58 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { formatDate } from "@/lib/utils";
+
+const PAGE_SIZE = 50;
 
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; type?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; type?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
   const typeFilter = params.type || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
-  const campaigns = await prisma.campaign.findMany({
-    where: {
-      AND: [
-        search
-          ? {
-              OR: [
-                { name: { contains: search } },
-                { description: { contains: search } },
-              ],
-            }
-          : {},
-        statusFilter ? { status: statusFilter } : {},
-        typeFilter ? { type: typeFilter } : {},
-      ],
-    },
-    include: {
-      _count: {
-        select: { donations: true },
+  const where = {
+    AND: [
+      search
+        ? {
+            OR: [
+              { name: { contains: search } },
+              { description: { contains: search } },
+            ],
+          }
+        : {},
+      statusFilter ? { status: statusFilter } : {},
+      typeFilter ? { type: typeFilter } : {},
+    ],
+  };
+
+  const [campaigns, totalCount] = await Promise.all([
+    prisma.campaign.findMany({
+      where,
+      include: {
+        _count: {
+          select: { donations: true },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+      orderBy: { createdAt: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.campaign.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (statusFilter) paginationParams.status = statusFilter;
+  if (typeFilter) paginationParams.type = typeFilter;
 
   const statusColors: Record<string, string> = {
     DRAFT: "bg-gray-100 text-gray-800",
@@ -53,8 +70,8 @@ export default async function CampaignsPage({
   const totalCampaigns = campaigns.length;
   const activeCampaigns = campaigns.filter((c) => c.status === "ACTIVE").length;
   const completedCampaigns = campaigns.filter((c) => c.status === "COMPLETED").length;
-  const totalRaised = campaigns.reduce((sum, c) => sum + c.actualRaised, 0);
-  const totalTarget = campaigns.reduce((sum, c) => sum + (c.budgetTarget || 0), 0);
+  const totalRaised = campaigns.reduce((sum, c) => sum + Number(c.actualRaised), 0);
+  const totalTarget = campaigns.reduce((sum, c) => sum + Number(c.budgetTarget || 0), 0);
   const overallProgress = totalTarget > 0 ? Math.min(Math.round((totalRaised / totalTarget) * 100), 100) : 0;
 
   return (
@@ -62,7 +79,7 @@ export default async function CampaignsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Campaigns</h1>
-          <p className="text-gray-500 mt-1">Manage your fundraising campaigns</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} campaigns</p>
         </div>
         <Link href="/campaigns/new">
           <Button>
@@ -220,10 +237,10 @@ export default async function CampaignsPage({
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {campaigns.map((campaign) => {
-                  const progress = campaign.budgetTarget && campaign.budgetTarget > 0
-                    ? Math.min(Math.round((campaign.actualRaised / campaign.budgetTarget) * 100), 100)
+                  const progress = campaign.budgetTarget && Number(campaign.budgetTarget) > 0
+                    ? Math.min(Math.round((Number(campaign.actualRaised) / Number(campaign.budgetTarget)) * 100), 100)
                     : 0;
-                  const hasTarget = campaign.budgetTarget && campaign.budgetTarget > 0;
+                  const hasTarget = campaign.budgetTarget && Number(campaign.budgetTarget) > 0;
 
                   return (
                     <tr key={campaign.id} className="hover:bg-gray-50 transition-colors">
@@ -250,7 +267,7 @@ export default async function CampaignsPage({
                           <div className="min-w-[140px]">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs font-medium text-gray-700">
-                                £{campaign.actualRaised.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                £{Number(campaign.actualRaised).toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                               </span>
                               <span className="text-xs text-gray-400">
                                 {progress}%
@@ -262,7 +279,7 @@ export default async function CampaignsPage({
                                 style={{ width: `${progress}%` }}
                               />
                             </div>
-                            <p className="text-xs text-gray-400 mt-0.5">of £{campaign.budgetTarget!.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">of £{Number(campaign.budgetTarget!).toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                           </div>
                         ) : (
                           <span className="text-sm text-gray-400">No target set</span>
@@ -279,6 +296,14 @@ export default async function CampaignsPage({
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/campaigns"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
         </Card>
       )}
     </div>

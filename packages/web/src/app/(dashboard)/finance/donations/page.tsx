@@ -5,40 +5,56 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { formatDate } from "@/lib/utils";
+
+const PAGE_SIZE = 50;
 
 export default async function DonationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; type?: string }>;
+  searchParams: Promise<{ search?: string; type?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const typeFilter = params.type || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
-  const donations = await prisma.donation.findMany({
-    where: {
-      AND: [
-        search
-          ? {
-              OR: [
-                { reference: { contains: search } },
-                { contact: { firstName: { contains: search } } },
-                { contact: { lastName: { contains: search } } },
-              ],
-            }
-          : {},
-        typeFilter ? { type: typeFilter } : {},
-      ],
-    },
-    include: {
-      contact: true,
-      campaign: true,
-      ledgerCode: true,
-    },
-    orderBy: { date: "desc" },
-    take: 50,
-  });
+  const where = {
+    AND: [
+      search
+        ? {
+            OR: [
+              { reference: { contains: search } },
+              { contact: { firstName: { contains: search } } },
+              { contact: { lastName: { contains: search } } },
+            ],
+          }
+        : {},
+      typeFilter ? { type: typeFilter } : {},
+    ],
+  };
+
+  const [donations, totalCount] = await Promise.all([
+    prisma.donation.findMany({
+      where,
+      include: {
+        contact: true,
+        campaign: true,
+        ledgerCode: true,
+      },
+      orderBy: { date: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.donation.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (typeFilter) paginationParams.type = typeFilter;
 
   const typeColors: Record<string, string> = {
     DONATION: "bg-green-100 text-green-800",
@@ -63,7 +79,7 @@ export default async function DonationsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Donations</h1>
-          <p className="text-gray-500 mt-1">Track donations, payments, and gifts</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} donations</p>
         </div>
         <div className="flex gap-3">
           <Link href="/finance/donations/import">
@@ -166,7 +182,7 @@ export default async function DonationsPage({
                       {donation.contact.firstName} {donation.contact.lastName}
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      £{donation.amount.toFixed(2)}
+                      £{Number(donation.amount).toFixed(2)}
                     </td>
                     <td className="px-6 py-4">
                       <Badge className={typeColors[donation.type] || ""}>{donation.type}</Badge>
@@ -184,6 +200,14 @@ export default async function DonationsPage({
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/finance/donations"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
         </Card>
       )}
     </div>

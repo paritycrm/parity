@@ -5,17 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { formatDate } from "@/lib/utils";
+
+const PAGE_SIZE = 50;
 
 export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; type?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; type?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
   const typeFilter = params.type || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
   // Calculate summary metrics
   const thisMonth = new Date();
@@ -41,29 +45,42 @@ export default async function PaymentsPage({
     }),
   ]);
 
-  const payments = await prisma.payment.findMany({
-    where: {
-      AND: [
-        search
-          ? {
-              OR: [
-                { contact: { firstName: { contains: search, mode: "insensitive" } } },
-                { contact: { lastName: { contains: search, mode: "insensitive" } } },
-                { externalId: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {},
-        statusFilter ? { status: statusFilter } : {},
-        typeFilter ? { type: typeFilter } : {},
-      ],
-    },
-    include: {
-      contact: true,
-      provider: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const where = {
+    AND: [
+      search
+        ? {
+            OR: [
+              { contact: { firstName: { contains: search, mode: "insensitive" as const } } },
+              { contact: { lastName: { contains: search, mode: "insensitive" as const } } },
+              { externalId: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
+        : {},
+      statusFilter ? { status: statusFilter } : {},
+      typeFilter ? { type: typeFilter } : {},
+    ],
+  };
+
+  const [payments, totalCount] = await Promise.all([
+    prisma.payment.findMany({
+      where,
+      include: {
+        contact: true,
+        provider: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.payment.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (statusFilter) paginationParams.status = statusFilter;
+  if (typeFilter) paginationParams.type = typeFilter;
 
   const statusColors: Record<string, string> = {
     SUCCEEDED: "bg-green-100 text-green-800",
@@ -85,7 +102,7 @@ export default async function PaymentsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
-          <p className="text-gray-500 mt-1">Track and manage payment transactions</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} payment transactions</p>
         </div>
         <Link href="/finance/payments/new">
           <Button>
@@ -100,7 +117,7 @@ export default async function PaymentsPage({
         <Card className="p-6">
           <div className="text-sm font-medium text-gray-600 mb-1">Total Received (This Month)</div>
           <div className="text-3xl font-bold text-gray-900">
-            £{(successedThisMonth._sum.amount || 0).toFixed(2)}
+            £{Number(successedThisMonth._sum.amount || 0).toFixed(2)}
           </div>
         </Card>
         <Card className="p-6">
@@ -212,7 +229,7 @@ export default async function PaymentsPage({
                       </Link>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      £{payment.amount.toFixed(2)}
+                      £{Number(payment.amount).toFixed(2)}
                     </td>
                     <td className="px-6 py-4">
                       <Badge className={typeColors[payment.type] || "bg-gray-100 text-gray-800"}>
@@ -235,6 +252,14 @@ export default async function PaymentsPage({
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/finance/payments"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
         </Card>
       )}
     </div>

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import { EmailComposeForm } from "./email-compose-form";
 
 export default async function EmailCommunicationsPage({
   searchParams,
@@ -315,40 +316,15 @@ export default async function EmailCommunicationsPage({
               Use <code className="bg-gray-100 px-1 rounded text-xs">{"{{name}}"}</code> to personalise with the contact&apos;s name.
             </p>
 
-            <form action={sendEmails} className="space-y-4">
-              <input type="hidden" name="audienceType" value={audienceType} />
-              <input type="hidden" name="eventTypeId" value={params.eventTypeId || ""} />
-              <input type="hidden" name="eventId" value={params.eventId || ""} />
-              <input type="hidden" name="attendeeStatus" value={params.attendeeStatus || ""} />
-
-              {templates.length > 0 && (
-                <Select
-                  label="Start from Template (optional)"
-                  name="templateId"
-                  placeholder="Write from scratch"
-                  options={templates.map((t) => ({ value: t.id, label: t.name }))}
-                />
-              )}
-
-              <Input label="Subject" name="subject" required placeholder="e.g. Upcoming 5K Run — Are you in?" />
-
-              <Textarea
-                label="Email Body"
-                name="body"
-                rows={8}
-                required
-                placeholder={`Hi {{name}},\n\nWe noticed you took part in a previous run event and wanted to let you know about an exciting new opportunity...\n\nBest wishes,\nThe Team`}
-              />
-
-              <div className="flex items-center justify-between pt-2">
-                <p className="text-sm text-gray-500">
-                  This will send to <strong>{audienceCount}</strong> recipient{audienceCount !== 1 ? "s" : ""}
-                </p>
-                <Button type="submit" className="flex items-center gap-2">
-                  <Send className="h-4 w-4" /> Send Emails
-                </Button>
-              </div>
-            </form>
+            <EmailComposeForm
+              audienceType={audienceType}
+              eventTypeId={params.eventTypeId || ""}
+              eventId={params.eventId || ""}
+              attendeeStatus={params.attendeeStatus || ""}
+              audienceCount={audienceCount}
+              templates={templates.map((t) => ({ id: t.id, name: t.name }))}
+              sendAction={sendEmails}
+            />
           </CardContent>
         </Card>
       )}

@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { formatDate } from "@/lib/utils";
+
+const PAGE_SIZE = 50;
 
 function ProgressBar({
   value,
@@ -86,12 +89,13 @@ function AnnualGauge({
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; type?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; type?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
   const typeFilter = params.type || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
   const settings = await getSystemSettings();
   const fyLabel = getCurrentFinancialYear(settings.financialYearEndMonth, settings.financialYearEndDay);
@@ -118,35 +122,49 @@ export default async function EventsPage({
   const annualCostBudget = (settings as any).eventsCostBudget || 0;
   const annualProfitTarget = (settings as any).eventsProfitTarget || 0;
 
+  // Build where clause for filtered events list
+  const where = {
+    AND: [
+      search
+        ? {
+            OR: [
+              { name: { contains: search } },
+              { location: { contains: search } },
+            ],
+          }
+        : {},
+      statusFilter ? { status: statusFilter } : {},
+      typeFilter ? { type: typeFilter } : {},
+    ],
+  };
+
   // Fetch filtered events for the list
-  const events = await prisma.event.findMany({
-    where: {
-      AND: [
-        search
-          ? {
-              OR: [
-                { name: { contains: search } },
-                { location: { contains: search } },
-              ],
-            }
-          : {},
-        statusFilter ? { status: statusFilter } : {},
-        typeFilter ? { type: typeFilter } : {},
-      ],
-    },
-    include: {
-      eventType: true,
-      campaign: true,
-      incomeLines: { select: { actual: true } },
-      costLines: { select: { actual: true } },
-      finance: { select: { incomeTarget: true, costTarget: true } },
-      _count: {
-        select: { attendees: true },
+  const [events, totalCount] = await Promise.all([
+    prisma.event.findMany({
+      where,
+      include: {
+        eventType: true,
+        campaign: true,
+        incomeLines: { select: { actual: true } },
+        costLines: { select: { actual: true } },
+        finance: { select: { incomeTarget: true, costTarget: true } },
+        _count: {
+          select: { attendees: true },
+        },
       },
-    },
-    orderBy: { startDate: "desc" },
-    take: 50,
-  });
+      orderBy: { startDate: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.event.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (statusFilter) paginationParams.status = statusFilter;
+  if (typeFilter) paginationParams.type = typeFilter;
 
   const statusColors: Record<string, string> = {
     PLANNED: "bg-gray-100 text-gray-800",
@@ -163,7 +181,7 @@ export default async function EventsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Events</h1>
-          <p className="text-gray-500 mt-1">Manage your events and track performance</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} events</p>
         </div>
         <Link href="/events/new">
           <Button>
@@ -315,89 +333,99 @@ export default async function EventsPage({
           actionHref="/events/new"
         />
       ) : (
-        <div className="space-y-3">
-          {events.map((event) => {
-            const evtIncome = event.incomeLines.reduce((s, l) => s + l.actual, 0);
-            const evtCosts = event.costLines.reduce((s, l) => s + l.actual, 0);
-            const evtProfit = evtIncome - evtCosts;
-            const evtIncomeTarget = event.finance?.incomeTarget || 0;
-            const evtCostTarget = event.finance?.costTarget || 0;
+        <>
+          <div className="space-y-3">
+            {events.map((event) => {
+              const evtIncome = event.incomeLines.reduce((s, l) => s + l.actual, 0);
+              const evtCosts = event.costLines.reduce((s, l) => s + l.actual, 0);
+              const evtProfit = evtIncome - evtCosts;
+              const evtIncomeTarget = event.finance?.incomeTarget || 0;
+              const evtCostTarget = event.finance?.costTarget || 0;
 
-            return (
-              <Card key={event.id} className="p-4 hover:bg-gray-50 transition-colors">
-                <Link href={`/events/${event.id}`}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold text-gray-900 truncate">
-                          {event.name}
-                        </h3>
-                        <Badge className={`text-xs ${statusColors[event.status] || ""}`}>
-                          {event.status}
-                        </Badge>
+              return (
+                <Card key={event.id} className="p-4 hover:bg-gray-50 transition-colors">
+                  <Link href={`/events/${event.id}`}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-sm font-semibold text-gray-900 truncate">
+                            {event.name}
+                          </h3>
+                          <Badge className={`text-xs ${statusColors[event.status] || ""}`}>
+                            {event.status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <span>{formatDate(event.startDate)}</span>
+                          {event.location && <span>· {event.location}</span>}
+                          {(event.eventType?.name || event.type) && <span>· {event.eventType?.name || event.type}</span>}
+                          {event.campaign && <span>· {event.campaign.name}</span>}
+                          <span>· {event._count.attendees} attendees</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
-                        <span>{formatDate(event.startDate)}</span>
-                        {event.location && <span>· {event.location}</span>}
-                        {(event.eventType?.name || event.type) && <span>· {event.eventType?.name || event.type}</span>}
-                        {event.campaign && <span>· {event.campaign.name}</span>}
-                        <span>· {event._count.attendees} attendees</span>
+
+                      {/* Financial summary */}
+                      <div className="flex items-center gap-6 flex-shrink-0 text-right">
+                        <div>
+                          <p className="text-xs text-gray-500">Income</p>
+                          <p className="text-sm font-semibold text-green-700">
+                            £{evtIncome.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Costs</p>
+                          <p className="text-sm font-semibold text-red-700">
+                            £{evtCosts.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Profit</p>
+                          <p className={`text-sm font-semibold ${evtProfit >= 0 ? "text-blue-700" : "text-amber-700"}`}>
+                            £{evtProfit.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Financial summary */}
-                    <div className="flex items-center gap-6 flex-shrink-0 text-right">
-                      <div>
-                        <p className="text-xs text-gray-500">Income</p>
-                        <p className="text-sm font-semibold text-green-700">
-                          £{evtIncome.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </p>
+                    {/* Per-event progress bar */}
+                    {evtIncomeTarget > 0 && (
+                      <div className="mt-3 space-y-1">
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>Income progress</span>
+                          <span>
+                            £{evtIncome.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} / £{evtIncomeTarget.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            {" "}({evtIncomeTarget > 0 ? Math.round((evtIncome / evtIncomeTarget) * 100) : 0}%)
+                          </span>
+                        </div>
+                        <ProgressBar value={evtIncome} target={evtIncomeTarget} colour="#16a34a" />
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Costs</p>
-                        <p className="text-sm font-semibold text-red-700">
-                          £{evtCosts.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </p>
+                    )}
+                    {evtCostTarget > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>Cost spend</span>
+                          <span>
+                            £{evtCosts.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} / £{evtCostTarget.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            {" "}({evtCostTarget > 0 ? Math.round((evtCosts / evtCostTarget) * 100) : 0}%)
+                          </span>
+                        </div>
+                        <ProgressBar value={evtCosts} target={evtCostTarget} colour="#dc2626" />
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Profit</p>
-                        <p className={`text-sm font-semibold ${evtProfit >= 0 ? "text-blue-700" : "text-amber-700"}`}>
-                          £{evtProfit.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Per-event progress bar */}
-                  {evtIncomeTarget > 0 && (
-                    <div className="mt-3 space-y-1">
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>Income progress</span>
-                        <span>
-                          £{evtIncome.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} / £{evtIncomeTarget.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                          {" "}({evtIncomeTarget > 0 ? Math.round((evtIncome / evtIncomeTarget) * 100) : 0}%)
-                        </span>
-                      </div>
-                      <ProgressBar value={evtIncome} target={evtIncomeTarget} colour="#16a34a" />
-                    </div>
-                  )}
-                  {evtCostTarget > 0 && (
-                    <div className="mt-2 space-y-1">
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>Cost spend</span>
-                        <span>
-                          £{evtCosts.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} / £{evtCostTarget.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                          {" "}({evtCostTarget > 0 ? Math.round((evtCosts / evtCostTarget) * 100) : 0}%)
-                        </span>
-                      </div>
-                      <ProgressBar value={evtCosts} target={evtCostTarget} colour="#dc2626" />
-                    </div>
-                  )}
-                </Link>
-              </Card>
-            );
-          })}
-        </div>
+                    )}
+                  </Link>
+                </Card>
+              );
+            })}
+          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/events"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
+        </>
       )}
     </div>
   );

@@ -1,7 +1,8 @@
 "use client";
 
-import { Bell, Search } from "lucide-react";
+import { Bell } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { SearchCommand } from "@/components/shared/search-command";
 import Link from "next/link";
 
 interface TopBarProps {
@@ -19,17 +20,7 @@ export function TopBar({ user, notificationCount = 0 }: TopBarProps) {
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
-      {/* Search */}
-      <div className="flex items-center gap-2 flex-1 max-w-lg">
-        <Search className="h-5 w-5 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search contacts, volunteers, broadcasts..."
-          className="flex-1 border-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
-        />
-      </div>
-
-      {/* Right side */}
+      <SearchCommand />
       <div className="flex items-center gap-4">
         <Link
           href="/notifications"

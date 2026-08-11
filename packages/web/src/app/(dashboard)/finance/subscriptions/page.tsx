@@ -5,24 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { formatDate } from "@/lib/utils";
+
+const PAGE_SIZE = 50;
 
 export default async function SubscriptionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; frequency?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; frequency?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
   const frequencyFilter = params.frequency || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
   // Calculate summary metrics
   const [
     activeCount,
     activeSubscriptions,
     pausedCount,
-    totalCount,
+    allSubCount,
   ] = await Promise.all([
     prisma.subscription.count({
       where: { status: "ACTIVE" },
@@ -52,29 +56,42 @@ export default async function SubscriptionsPage({
     return total + (Number(group._sum.amount) || 0) * multiplier;
   }, 0);
 
-  const subscriptions = await prisma.subscription.findMany({
-    where: {
-      AND: [
-        search
-          ? {
-              OR: [
-                { contact: { firstName: { contains: search, mode: "insensitive" } } },
-                { contact: { lastName: { contains: search, mode: "insensitive" } } },
-                { externalId: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {},
-        statusFilter ? { status: statusFilter } : {},
-        frequencyFilter ? { frequency: frequencyFilter } : {},
-      ],
-    },
-    include: {
-      contact: true,
-      provider: true,
-    },
-    orderBy: { startDate: "desc" },
-    take: 50,
-  });
+  const where = {
+    AND: [
+      search
+        ? {
+            OR: [
+              { contact: { firstName: { contains: search, mode: "insensitive" as const } } },
+              { contact: { lastName: { contains: search, mode: "insensitive" as const } } },
+              { externalId: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
+        : {},
+      statusFilter ? { status: statusFilter } : {},
+      frequencyFilter ? { frequency: frequencyFilter } : {},
+    ],
+  };
+
+  const [subscriptions, totalCount] = await Promise.all([
+    prisma.subscription.findMany({
+      where,
+      include: {
+        contact: true,
+        provider: true,
+      },
+      orderBy: { startDate: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.subscription.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (statusFilter) paginationParams.status = statusFilter;
+  if (frequencyFilter) paginationParams.frequency = frequencyFilter;
 
   const statusColors: Record<string, string> = {
     ACTIVE: "bg-green-100 text-green-800",
@@ -95,7 +112,7 @@ export default async function SubscriptionsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Subscriptions</h1>
-          <p className="text-gray-500 mt-1">Manage recurring payment subscriptions</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} subscriptions</p>
         </div>
         <Link href="/finance/subscriptions/new">
           <Button>
@@ -123,7 +140,7 @@ export default async function SubscriptionsPage({
         </Card>
         <Card className="p-6">
           <div className="text-sm font-medium text-gray-600 mb-1">Total Subscriptions</div>
-          <div className="text-3xl font-bold text-indigo-600">{totalCount}</div>
+          <div className="text-3xl font-bold text-indigo-600">{allSubCount}</div>
         </Card>
       </div>
 
@@ -215,7 +232,7 @@ export default async function SubscriptionsPage({
                       </Link>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      £{subscription.amount.toFixed(2)}
+                      £{Number(subscription.amount).toFixed(2)}
                     </td>
                     <td className="px-6 py-4">
                       <Badge
@@ -246,6 +263,14 @@ export default async function SubscriptionsPage({
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/finance/subscriptions"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
         </Card>
       )}
     </div>

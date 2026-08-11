@@ -7,55 +7,73 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
+
+const PAGE_SIZE = 50;
 
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; type?: string; lottery?: string; missing?: string }>;
+  searchParams: Promise<{ search?: string; type?: string; lottery?: string; missing?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const typeFilter = params.type || "";
   const lotteryFilter = params.lottery || "";
-  const missingFilter = params.missing || ""; // "phone" or "email"
+  const missingFilter = params.missing || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
-  const contacts = await prisma.contact.findMany({
-    where: {
-      AND: [
-        search
-          ? {
-              OR: [
-                { firstName: { contains: search, mode: "insensitive" } },
-                { lastName: { contains: search, mode: "insensitive" } },
-                { email: { contains: search, mode: "insensitive" } },
-                { postcode: { contains: search, mode: "insensitive" } },
-                ...(!isNaN(parseInt(search, 10)) ? [{ donorId: { equals: parseInt(search, 10) } }] : []),
-              ],
-            }
-          : {},
-        typeFilter ? { types: { has: typeFilter } } : {},
-        lotteryFilter === "yes" ? { isLotteryMember: true } : {},
-        missingFilter === "phone" ? { OR: [{ phone: null }, { phone: "" }] } : {},
-        missingFilter === "email" ? { OR: [{ email: null }, { email: "" }] } : {},
-      ],
-    },
-    include: {
-      organisation: true,
-      tags: { include: { tag: true } },
-      volunteerProfile: true,
-      giftAids: {
-        where: { status: "ACTIVE" },
-        select: { id: true, type: true },
-      },
-      donations: {
-        select: { amount: true },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const where = {
+    AND: [
+      search
+        ? {
+            OR: [
+              { firstName: { contains: search, mode: "insensitive" as const } },
+              { lastName: { contains: search, mode: "insensitive" as const } },
+              { email: { contains: search, mode: "insensitive" as const } },
+              { postcode: { contains: search, mode: "insensitive" as const } },
+              ...(!isNaN(parseInt(search, 10)) ? [{ donorId: { equals: parseInt(search, 10) } }] : []),
+            ],
+          }
+        : {},
+      typeFilter ? { types: { has: typeFilter } } : {},
+      lotteryFilter === "yes" ? { isLotteryMember: true } : {},
+      missingFilter === "phone" ? { OR: [{ phone: null }, { phone: "" }] } : {},
+      missingFilter === "email" ? { OR: [{ email: null }, { email: "" }] } : {},
+    ],
+  };
 
+  const [contacts, totalCount] = await Promise.all([
+    prisma.contact.findMany({
+      where,
+      include: {
+        organisation: true,
+        tags: { include: { tag: true } },
+        volunteerProfile: true,
+        giftAids: {
+          where: { status: "ACTIVE" },
+          select: { id: true, type: true },
+        },
+        donations: {
+          select: { amount: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.contact.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const systemSettings = await getSystemSettings();
+
+  // Build search params for pagination links (preserve existing filters)
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (typeFilter) paginationParams.type = typeFilter;
+  if (lotteryFilter) paginationParams.lottery = lotteryFilter;
+  if (missingFilter) paginationParams.missing = missingFilter;
 
   const typeColors: Record<string, string> = {
     DONOR: "bg-green-100 text-green-800",
@@ -67,7 +85,9 @@ export default async function ContactsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
-          <p className="text-gray-500 mt-1">Manage your contacts, donors, and volunteers</p>
+          <p className="text-gray-500 mt-1">
+            {totalCount.toLocaleString()} contact{totalCount !== 1 ? "s" : ""}
+          </p>
         </div>
         <Link href="/crm/contacts/new">
           <Button>
@@ -144,7 +164,7 @@ export default async function ContactsPage({
         <EmptyState
           icon={Users}
           title="No contacts found"
-          description="Get started by adding your first contact to the CRM."
+          description={search ? "Try adjusting your search or filters." : "Get started by adding your first contact to the CRM."}
           actionLabel="Add Contact"
           actionHref="/crm/contacts/new"
         />
@@ -176,8 +196,8 @@ export default async function ContactsPage({
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {contacts.map((contact) => {
-                  const lifetimeTotal = contact.donations.reduce((sum, d) => sum + d.amount, 0);
-                  const isGold = lifetimeTotal >= systemSettings.goldDonorThreshold;
+                  const lifetimeTotal = contact.donations.reduce((sum, d) => sum + Number(d.amount), 0);
+                  const isGold = lifetimeTotal >= Number(systemSettings.goldDonorThreshold);
                   return (
                   <tr key={contact.id} className={isGold ? "bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 transition-colors" : "hover:bg-gray-50 transition-colors"}>
                     <td className="px-4 py-4">
@@ -251,6 +271,18 @@ export default async function ContactsPage({
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="px-6 pb-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalCount}
+              pageSize={PAGE_SIZE}
+              baseUrl="/crm/contacts"
+              searchParams={paginationParams}
+            />
           </div>
         </Card>
       )}

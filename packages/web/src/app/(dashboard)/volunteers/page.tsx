@@ -6,50 +6,66 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { getStatusColor } from "@/lib/utils";
+
+const PAGE_SIZE = 50;
 
 export default async function VolunteersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
-  const volunteers = await prisma.volunteerProfile.findMany({
-    where: {
-      AND: [
-        search
-          ? {
-              contact: {
-                OR: [
-                  { firstName: { contains: search } },
-                  { lastName: { contains: search } },
-                  { email: { contains: search } },
-                ],
-              },
-            }
-          : {},
-        statusFilter ? { status: statusFilter } : {},
-      ],
-    },
-    include: {
-      contact: true,
-      departments: { include: { department: true } },
-      skills: { include: { skill: true } },
-      hoursLogs: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const where = {
+    AND: [
+      search
+        ? {
+            contact: {
+              OR: [
+                { firstName: { contains: search } },
+                { lastName: { contains: search } },
+                { email: { contains: search } },
+              ],
+            },
+          }
+        : {},
+      statusFilter ? { status: statusFilter } : {},
+    ],
+  };
+
+  const [volunteers, totalCount] = await Promise.all([
+    prisma.volunteerProfile.findMany({
+      where,
+      include: {
+        contact: true,
+        departments: { include: { department: true } },
+        skills: { include: { skill: true } },
+        hoursLogs: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.volunteerProfile.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (statusFilter) paginationParams.status = statusFilter;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Volunteers</h1>
-          <p className="text-gray-500 mt-1">Manage your volunteer workforce</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} volunteers</p>
         </div>
         <Link href="/volunteers/new">
           <Button>
@@ -118,54 +134,64 @@ export default async function VolunteersPage({
           actionHref="/volunteers/new"
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {volunteers.map((vol) => {
-            const totalHours = vol.hoursLogs.reduce((sum, log) => sum + log.hours, 0);
-            return (
-              <Link key={vol.id} href={`/volunteers/${vol.id}`}>
-                <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
-                  <div className="flex items-start gap-3">
-                    <Avatar firstName={vol.contact.firstName} lastName={vol.contact.lastName} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900 truncate">
-                          {vol.contact.firstName} {vol.contact.lastName}
-                        </h3>
-                        <Badge className={getStatusColor(vol.status)}>{vol.status}</Badge>
-                      </div>
-                      {vol.contact.email && (
-                        <p className="text-sm text-gray-500 truncate">{vol.contact.email}</p>
-                      )}
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {vol.skills.slice(0, 3).map((vs) => (
-                          <Badge key={vs.id} variant="outline" className="text-xs">
-                            {vs.skill.name}
-                          </Badge>
-                        ))}
-                        {vol.skills.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">+{vol.skills.length - 3}</Badge>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {volunteers.map((vol) => {
+              const totalHours = vol.hoursLogs.reduce((sum, log) => sum + log.hours, 0);
+              return (
+                <Link key={vol.id} href={`/volunteers/${vol.id}`}>
+                  <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
+                    <div className="flex items-start gap-3">
+                      <Avatar firstName={vol.contact.firstName} lastName={vol.contact.lastName} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900 truncate">
+                            {vol.contact.firstName} {vol.contact.lastName}
+                          </h3>
+                          <Badge className={getStatusColor(vol.status)}>{vol.status}</Badge>
+                        </div>
+                        {vol.contact.email && (
+                          <p className="text-sm text-gray-500 truncate">{vol.contact.email}</p>
                         )}
-                      </div>
-                      <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-                        <span>{totalHours.toFixed(1)} hrs logged</span>
-                        {vol.desiredHoursPerWeek && (
-                          <span>{vol.desiredHoursPerWeek} hrs/week desired</span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {vol.departments.map((vd) => (
-                          <span key={vd.departmentId} className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded">
-                            {vd.department.name}
-                          </span>
-                        ))}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {vol.skills.slice(0, 3).map((vs) => (
+                            <Badge key={vs.id} variant="outline" className="text-xs">
+                              {vs.skill.name}
+                            </Badge>
+                          ))}
+                          {vol.skills.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">+{vol.skills.length - 3}</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+                          <span>{totalHours.toFixed(1)} hrs logged</span>
+                          {vol.desiredHoursPerWeek && (
+                            <span>{vol.desiredHoursPerWeek} hrs/week desired</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {vol.departments.map((vd) => (
+                            <span key={vd.departmentId} className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded">
+                              {vd.department.name}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/volunteers"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
+        </>
       )}
     </div>
   );

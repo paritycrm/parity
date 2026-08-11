@@ -1,12 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import Link from "next/link";
-import { Plus, AlertCircle } from "lucide-react";
+import { Plus, AlertCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { formatDate } from "@/lib/utils";
+
+const PAGE_SIZE = 100;
 
 const PRIORITY_COLORS: Record<string, string> = {
   LOW: "bg-gray-100 text-gray-800",
@@ -27,12 +30,31 @@ const STATUS_COLORS: Record<string, string> = {
 export default async function CasesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; search?: string; page?: string }>;
 }) {
   await requireAuth();
 
   const params = await searchParams;
   const statusFilter = params.status || "";
+  const search = params.search || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
+
+  const searchFilter = search
+    ? {
+        OR: [
+          { title: { contains: search, mode: "insensitive" as const } },
+          { caseNumber: { contains: search, mode: "insensitive" as const } },
+          {
+            contact: {
+              OR: [
+                { firstName: { contains: search, mode: "insensitive" as const } },
+                { lastName: { contains: search, mode: "insensitive" as const } },
+              ],
+            },
+          },
+        ],
+      }
+    : {};
 
   // Fetch stats
   const [openCount, inProgressCount, urgentCount, resolvedThisMonth] = await Promise.all([
@@ -50,17 +72,30 @@ export default async function CasesPage({
   ]);
 
   // Fetch cases with optional status filter
-  const cases = await prisma.caseRecord.findMany({
-    where: statusFilter
-      ? { status: statusFilter }
-      : {},
-    include: {
-      contact: true,
-      assignedTo: true,
-    },
-    orderBy: { openedDate: "desc" },
-    take: 100,
-  });
+  const where = {
+    ...(statusFilter ? { status: statusFilter } : {}),
+    ...searchFilter,
+  };
+
+  const [cases, totalCount] = await Promise.all([
+    prisma.caseRecord.findMany({
+      where,
+      include: {
+        contact: true,
+        assignedTo: true,
+      },
+      orderBy: { openedDate: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.caseRecord.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
+  if (statusFilter) paginationParams.status = statusFilter;
+  if (search) paginationParams.search = search;
 
   const statuses = ["OPEN", "IN_PROGRESS", "AWAITING_INFO", "ON_HOLD", "RESOLVED", "CLOSED"];
 
@@ -70,7 +105,7 @@ export default async function CasesPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Case Management</h1>
-          <p className="text-gray-500 mt-1">Track and manage beneficiary cases</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} cases</p>
         </div>
         <Link href="/cases/new">
           <Button>
@@ -116,11 +151,33 @@ export default async function CasesPage({
         </Card>
       </div>
 
+      {/* Search */}
+      <Card>
+        <CardContent className="pt-4">
+          <form className="flex gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              <Search className="h-5 w-5 text-gray-400" />
+              <input
+                name="search"
+                type="text"
+                defaultValue={search}
+                placeholder="Search cases by title, case number, or contact name..."
+                className="flex-1 border-0 bg-transparent text-sm focus:outline-none focus:ring-0"
+              />
+            </div>
+            {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
+            <Button type="submit" variant="outline" size="sm">
+              Search
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
       {/* Status Tabs */}
       <Card>
         <CardContent className="pt-4">
           <div className="flex gap-2 flex-wrap">
-            <Link href="/cases">
+            <Link href={`/cases${search ? `?search=${encodeURIComponent(search)}` : ""}`}>
               <Button
                 variant={statusFilter === "" ? "default" : "outline"}
                 size="sm"
@@ -129,7 +186,7 @@ export default async function CasesPage({
               </Button>
             </Link>
             {statuses.map((status) => (
-              <Link key={status} href={`/cases?status=${status}`}>
+              <Link key={status} href={`/cases?status=${status}${search ? `&search=${encodeURIComponent(search)}` : ""}`}>
                 <Button
                   variant={statusFilter === status ? "default" : "outline"}
                   size="sm"
@@ -225,7 +282,7 @@ export default async function CasesPage({
                       {caseRecord.assignedTo ? (
                         <span className="text-gray-700">{caseRecord.assignedTo.name}</span>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-400">--</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
@@ -236,6 +293,14 @@ export default async function CasesPage({
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/cases"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
         </Card>
       )}
     </div>

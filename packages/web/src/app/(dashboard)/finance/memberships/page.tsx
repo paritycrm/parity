@@ -6,19 +6,40 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import { formatDate } from "@/lib/utils";
 
-export default async function MembershipsPage() {
+const PAGE_SIZE = 50;
+
+export default async function MembershipsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAuth();
 
-  const memberships = await prisma.membership.findMany({
-    include: {
-      contact: true,
-      membershipType: true,
-    },
-    orderBy: { startDate: "desc" },
-    take: 100,
-  });
+  const params = await searchParams;
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
+
+  const where = {};
+
+  const [memberships, totalCount] = await Promise.all([
+    prisma.membership.findMany({
+      where,
+      include: {
+        contact: true,
+        membershipType: true,
+      },
+      orderBy: { startDate: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.membership.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const paginationParams: Record<string, string> = {};
 
   const membershipTypes = await prisma.membershipType.findMany({
     where: { isActive: true },
@@ -36,7 +57,7 @@ export default async function MembershipsPage() {
 
   const totalRevenue = activeMemberships.reduce((sum, m) => {
     const type = membershipTypes.find((t) => t.id === m.membershipTypeId);
-    return sum + (type?.price || 0);
+    return sum + Number(type?.price || 0);
   }, 0);
 
   const statusColors: Record<string, string> = {
@@ -52,7 +73,7 @@ export default async function MembershipsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Memberships</h1>
-          <p className="text-gray-500 mt-1">Manage member accounts and subscriptions</p>
+          <p className="text-gray-500 mt-1">{totalCount.toLocaleString()} memberships</p>
         </div>
         <Link href="/finance/memberships/new">
           <Button>
@@ -107,7 +128,7 @@ export default async function MembershipsPage() {
                 Annual Revenue
               </p>
               <p className="text-3xl font-bold text-indigo-600 mt-1">
-                £{totalRevenue.toFixed(2)}
+                £{Number(totalRevenue).toFixed(2)}
               </p>
             </div>
             <CreditCard className="h-5 w-5 text-indigo-400" />
@@ -203,6 +224,14 @@ export default async function MembershipsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/finance/memberships"
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            searchParams={paginationParams}
+          />
         </Card>
       )}
     </div>

@@ -3,48 +3,58 @@ import Link from "next/link";
 import { CheckCircle, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
+
+const PAGE_SIZE = 50;
 
 export default async function ConsentTrailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; consentType?: string; action?: string }>;
+  searchParams: Promise<{ search?: string; consentType?: string; action?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const consentTypeFilter = params.consentType || "";
   const actionFilter = params.action || "";
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
+  const skip = (currentPage - 1) * PAGE_SIZE;
 
-  // Get consent records
-  const consentRecords = await prisma.consentRecord.findMany({
-    where: {
-      AND: [
-        consentTypeFilter ? { consentType: consentTypeFilter } : {},
-        actionFilter ? { action: actionFilter } : {},
-      ],
-    },
-    include: {
-      recordedBy: true,
-    },
-    orderBy: { recordedAt: "desc" },
-    take: 100,
-  });
+  // Build where clause for consent records, including contact name search
+  const where: Parameters<typeof prisma.consentRecord.findMany>[0]["where"] = {
+    AND: [
+      consentTypeFilter ? { consentType: consentTypeFilter } : {},
+      actionFilter ? { action: actionFilter } : {},
+      search
+        ? {
+            contact: {
+              OR: [
+                { firstName: { contains: search, mode: "insensitive" } },
+                { lastName: { contains: search, mode: "insensitive" } },
+              ],
+            },
+          }
+        : {},
+    ],
+  };
 
-  // Get all contacts for name lookup
-  const contacts = await prisma.contact.findMany({
-    select: { id: true, firstName: true, lastName: true },
-  });
+  // Get consent records with pagination and include the contact relation
+  const [consentRecords, totalCount] = await Promise.all([
+    prisma.consentRecord.findMany({
+      where,
+      include: {
+        recordedBy: true,
+        contact: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+      orderBy: { recordedAt: "desc" },
+      take: PAGE_SIZE,
+      skip,
+    }),
+    prisma.consentRecord.count({ where }),
+  ]);
 
-  const contactMap = new Map(
-    contacts.map((c) => [c.id, `${c.firstName} ${c.lastName}`])
-  );
-
-  // Filter by search (contact name)
-  const filtered = search
-    ? consentRecords.filter((r) => {
-        const contactName = contactMap.get(r.contactId) || r.contactId;
-        return contactName.toLowerCase().includes(search.toLowerCase());
-      })
-    : consentRecords;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const consentTypeColors: Record<string, string> = {
     POST: "bg-blue-100 text-blue-800",
@@ -60,6 +70,16 @@ export default async function ConsentTrailPage({
     GRANTED: "bg-green-100 text-green-800",
     WITHDRAWN: "bg-red-100 text-red-800",
     UPDATED: "bg-blue-100 text-blue-800",
+  };
+
+  // Build base URL for pagination links
+  const buildPageUrl = (page: number) => {
+    const urlParams = new URLSearchParams();
+    if (search) urlParams.set("search", search);
+    if (consentTypeFilter) urlParams.set("consentType", consentTypeFilter);
+    if (actionFilter) urlParams.set("action", actionFilter);
+    urlParams.set("page", String(page));
+    return `/compliance/consent-trail?${urlParams.toString()}`;
   };
 
   return (
@@ -116,7 +136,7 @@ export default async function ConsentTrailPage({
       </Card>
 
       {/* Consent records table */}
-      {filtered.length === 0 ? (
+      {consentRecords.length === 0 ? (
         <Card className="p-12 text-center">
           <CheckCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900">No consent records found</h3>
@@ -155,8 +175,10 @@ export default async function ConsentTrailPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((record) => {
-                  const contactName = contactMap.get(record.contactId) || record.contactId;
+                {consentRecords.map((record) => {
+                  const contactName = record.contact
+                    ? `${record.contact.firstName} ${record.contact.lastName}`
+                    : record.contactId;
                   return (
                     <tr key={record.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
@@ -205,9 +227,25 @@ export default async function ConsentTrailPage({
         </Card>
       )}
 
-      <p className="text-xs text-gray-500">
-        Showing last 100 consent records. Total records: {consentRecords.length}
-      </p>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            Showing {skip + 1}–{Math.min(skip + PAGE_SIZE, totalCount)} of {totalCount} records
+          </p>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            buildPageUrl={buildPageUrl}
+          />
+        </div>
+      )}
+
+      {totalPages <= 1 && totalCount > 0 && (
+        <p className="text-xs text-gray-500">
+          Showing {totalCount} consent record{totalCount !== 1 ? "s" : ""}.
+        </p>
+      )}
     </div>
   );
 }
