@@ -13,13 +13,15 @@ const PAGE_SIZE = 50;
 export default async function GiftAidPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; type?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; type?: string; page?: string; dateFrom?: string; dateTo?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
   const typeFilter = params.type || "";
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
+  const dateFrom = params.dateFrom || "";
+  const dateTo = params.dateTo || "";
 
   const where = {
     AND: [
@@ -33,6 +35,16 @@ export default async function GiftAidPage({
         : {},
       statusFilter ? { status: statusFilter } : {},
       typeFilter ? { type: typeFilter } : {},
+      ...(dateFrom || dateTo
+        ? [
+            {
+              startDate: {
+                ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+                ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+              },
+            },
+          ]
+        : []),
     ],
   };
 
@@ -56,6 +68,8 @@ export default async function GiftAidPage({
   if (search) paginationParams.search = search;
   if (typeFilter) paginationParams.type = typeFilter;
   if (statusFilter) paginationParams.status = statusFilter;
+  if (dateFrom) paginationParams.dateFrom = dateFrom;
+  if (dateTo) paginationParams.dateTo = dateTo;
 
   const statusColors: Record<string, string> = {
     ACTIVE: "bg-green-100 text-green-800",
@@ -110,6 +124,18 @@ export default async function GiftAidPage({
             <option value="EXPIRED">Expired</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
+          <input
+            name="dateFrom"
+            type="date"
+            defaultValue={dateFrom}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            name="dateTo"
+            type="date"
+            defaultValue={dateTo}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
           <Button type="submit" variant="outline" size="sm">
             Filter
           </Button>

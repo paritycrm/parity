@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import Link from "next/link";
-import { Users, CreditCard, Calendar, Plus } from "lucide-react";
+import { Users, CreditCard, Calendar, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -14,18 +14,32 @@ const PAGE_SIZE = 50;
 export default async function MembershipsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; dateFrom?: string; dateTo?: string }>;
 }) {
   await requireAuth();
 
   const params = await searchParams;
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
+  const dateFrom = params.dateFrom || "";
+  const dateTo = params.dateTo || "";
 
-  const where = {};
+  const listWhere = {
+    ...(dateFrom || dateTo
+      ? {
+          startDate: {
+            ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+            ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+          },
+        }
+      : {}),
+  };
 
-  const [memberships, totalCount] = await Promise.all([
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const [memberships, totalCount, totalMemberCount, activeMemberCount, expiringMemberCount, activeMembershipsForRevenue, membershipTypes] = await Promise.all([
     prisma.membership.findMany({
-      where,
+      where: listWhere,
       include: {
         contact: true,
         membershipType: true,
@@ -34,28 +48,33 @@ export default async function MembershipsPage({
       skip: (currentPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    prisma.membership.count({ where }),
+    prisma.membership.count({ where: listWhere }),
+    // Stats queries (not date-filtered)
+    prisma.membership.count({}),
+    prisma.membership.count({ where: { status: "ACTIVE" } }),
+    prisma.membership.count({
+      where: {
+        status: "ACTIVE",
+        endDate: { gt: now, lte: thirtyDaysFromNow },
+      },
+    }),
+    prisma.membership.findMany({
+      where: { status: "ACTIVE" },
+      select: { membershipTypeId: true },
+    }),
+    prisma.membershipType.findMany({
+      where: { isActive: true },
+    }),
   ]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const paginationParams: Record<string, string> = {};
+  if (dateFrom) paginationParams.dateFrom = dateFrom;
+  if (dateTo) paginationParams.dateTo = dateTo;
 
-  const membershipTypes = await prisma.membershipType.findMany({
-    where: { isActive: true },
-  });
-
-  // Calculate statistics
-  const activeMemberships = memberships.filter((m) => m.status === "ACTIVE");
-  const expiringMemberships = memberships.filter((m) => {
-    if (m.status !== "ACTIVE") return false;
-    const daysUntilExpiry = Math.floor(
-      (m.endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
-  });
-
-  const totalRevenue = activeMemberships.reduce((sum, m) => {
+  // Calculate revenue from active memberships (not date-filtered)
+  const totalRevenue = activeMembershipsForRevenue.reduce((sum, m) => {
     const type = membershipTypes.find((t) => t.id === m.membershipTypeId);
     return sum + Number(type?.price || 0);
   }, 0);
@@ -91,7 +110,7 @@ export default async function MembershipsPage({
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Total Members
               </p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{memberships.length}</p>
+              <p className="text-3xl font-bold text-gray-900 mt-1">{totalMemberCount}</p>
             </div>
             <Users className="h-5 w-5 text-gray-400" />
           </div>
@@ -103,7 +122,7 @@ export default async function MembershipsPage({
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Active
               </p>
-              <p className="text-3xl font-bold text-green-600 mt-1">{activeMemberships.length}</p>
+              <p className="text-3xl font-bold text-green-600 mt-1">{activeMemberCount}</p>
             </div>
             <Users className="h-5 w-5 text-green-400" />
           </div>
@@ -115,7 +134,7 @@ export default async function MembershipsPage({
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Expiring Soon
               </p>
-              <p className="text-3xl font-bold text-yellow-600 mt-1">{expiringMemberships.length}</p>
+              <p className="text-3xl font-bold text-yellow-600 mt-1">{expiringMemberCount}</p>
             </div>
             <Calendar className="h-5 w-5 text-yellow-400" />
           </div>
@@ -135,6 +154,27 @@ export default async function MembershipsPage({
           </div>
         </Card>
       </div>
+
+      {/* Date range filter */}
+      <Card className="p-4">
+        <form className="flex flex-col sm:flex-row gap-3">
+          <input
+            name="dateFrom"
+            type="date"
+            defaultValue={dateFrom}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            name="dateTo"
+            type="date"
+            defaultValue={dateTo}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <Button type="submit" variant="outline" size="sm">
+            Filter
+          </Button>
+        </form>
+      </Card>
 
       {/* Memberships List */}
       {memberships.length === 0 ? (

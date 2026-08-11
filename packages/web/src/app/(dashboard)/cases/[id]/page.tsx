@@ -15,6 +15,8 @@ import {
   MoreHorizontal,
   Save,
   X,
+  Pencil,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +42,18 @@ const STATUS_COLORS: Record<string, string> = {
   CLOSED: "bg-gray-100 text-gray-800",
 };
 
+const CATEGORY_OPTIONS = [
+  "GENERAL",
+  "SAFEGUARDING",
+  "COMPLAINT",
+  "WELFARE",
+  "FINANCIAL",
+  "HOUSING",
+  "HEALTH",
+  "LEGAL",
+  "OTHER",
+];
+
 function getActivityIcon(type: string) {
   switch (type) {
     case "NOTE":
@@ -63,12 +77,16 @@ function getActivityIcon(type: string) {
 
 export default async function CaseDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ edit?: string }>;
 }) {
   await requireAuth();
 
   const { id } = await params;
+  const { edit } = await searchParams;
+  const isEditing = edit === "true";
 
   const caseRecord = await prisma.caseRecord.findUnique({
     where: { id },
@@ -90,7 +108,20 @@ export default async function CaseDetailPage({
     select: { id: true, name: true },
   });
 
-  // Server actions
+  // Build category options ensuring current value is included
+  const categoryOptions = CATEGORY_OPTIONS.includes(caseRecord.category)
+    ? CATEGORY_OPTIONS
+    : [caseRecord.category, ...CATEGORY_OPTIONS];
+
+  // Check if follow-up date is overdue
+  const isOverdue =
+    caseRecord.followUpDate &&
+    new Date(caseRecord.followUpDate) < new Date() &&
+    caseRecord.status !== "RESOLVED" &&
+    caseRecord.status !== "CLOSED";
+
+  // ── Server Actions ──────────────────────────────────────────────
+
   async function addNote(formData: FormData) {
     "use server";
     const session = await getSession();
@@ -174,6 +205,137 @@ export default async function CaseDetailPage({
     revalidatePath(`/cases/${id}`);
   }
 
+  async function updateCasePriority(formData: FormData) {
+    "use server";
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const current = await prisma.caseRecord.findUnique({ where: { id } });
+    if (!current) return;
+
+    const newPriority = formData.get("priority") as string;
+    if (newPriority === current.priority) return;
+
+    await prisma.caseRecord.update({
+      where: { id },
+      data: { priority: newPriority },
+    });
+
+    await prisma.caseActivity.create({
+      data: {
+        caseId: id,
+        type: "STATUS_CHANGE",
+        description: `Priority changed from ${current.priority} to ${newPriority}`,
+        createdById: session.id,
+      },
+    });
+
+    revalidatePath(`/cases/${id}`);
+  }
+
+  async function updateCaseCategory(formData: FormData) {
+    "use server";
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const current = await prisma.caseRecord.findUnique({ where: { id } });
+    if (!current) return;
+
+    const newCategory = formData.get("category") as string;
+    if (newCategory === current.category) return;
+
+    await prisma.caseRecord.update({
+      where: { id },
+      data: { category: newCategory },
+    });
+
+    await prisma.caseActivity.create({
+      data: {
+        caseId: id,
+        type: "STATUS_CHANGE",
+        description: `Category changed from ${current.category} to ${newCategory}`,
+        createdById: session.id,
+      },
+    });
+
+    revalidatePath(`/cases/${id}`);
+  }
+
+  async function updateCaseDetails(formData: FormData) {
+    "use server";
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const current = await prisma.caseRecord.findUnique({ where: { id } });
+    if (!current) return;
+
+    const newTitle = (formData.get("title") as string).trim();
+    const newDescription = (formData.get("description") as string).trim();
+
+    if (!newTitle) return;
+
+    const changes: string[] = [];
+    if (newTitle !== current.title) changes.push("title");
+    if (newDescription !== (current.description || "")) changes.push("description");
+
+    if (changes.length === 0) {
+      redirect(`/cases/${id}`);
+      return;
+    }
+
+    await prisma.caseRecord.update({
+      where: { id },
+      data: {
+        title: newTitle,
+        description: newDescription || null,
+      },
+    });
+
+    await prisma.caseActivity.create({
+      data: {
+        caseId: id,
+        type: "NOTE",
+        description: `Updated case ${changes.join(" and ")}`,
+        createdById: session.id,
+      },
+    });
+
+    revalidatePath(`/cases/${id}`);
+    redirect(`/cases/${id}`);
+  }
+
+  async function updateFollowUpDate(formData: FormData) {
+    "use server";
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const current = await prisma.caseRecord.findUnique({ where: { id } });
+    if (!current) return;
+
+    const dateStr = formData.get("followUpDate") as string;
+    const newDate = dateStr ? new Date(dateStr) : null;
+
+    await prisma.caseRecord.update({
+      where: { id },
+      data: { followUpDate: newDate },
+    });
+
+    const dateDisplay = newDate
+      ? newDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+      : "none";
+
+    await prisma.caseActivity.create({
+      data: {
+        caseId: id,
+        type: "NOTE",
+        description: `Follow-up date ${newDate ? "set to" : "cleared"} ${newDate ? dateDisplay : ""}`.trim(),
+        createdById: session.id,
+      },
+    });
+
+    revalidatePath(`/cases/${id}`);
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -183,19 +345,72 @@ export default async function CaseDetailPage({
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{caseRecord.title}</h1>
-          <p className="text-sm text-gray-500">
-            Case {caseRecord.caseNumber} • Opened {formatDate(caseRecord.openedDate)}
-          </p>
+        <div className="flex-1">
+          {isEditing ? (
+            <form action={updateCaseDetails} className="space-y-3">
+              <Input
+                name="title"
+                defaultValue={caseRecord.title}
+                className="text-2xl font-bold"
+                placeholder="Case title"
+                required
+              />
+              <Textarea
+                name="description"
+                defaultValue={caseRecord.description || ""}
+                placeholder="Case description..."
+                rows={4}
+                className="rounded-lg"
+              />
+              <div className="flex gap-2">
+                <Button type="submit" size="sm">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
+                <Link href={`/cases/${id}`}>
+                  <Button type="button" variant="outline" size="sm">
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                </Link>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-900">{caseRecord.title}</h1>
+                <Link href={`/cases/${id}?edit=true`}>
+                  <Button variant="outline" size="sm">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+              <p className="text-sm text-gray-500">
+                Case {caseRecord.caseNumber} • Opened {formatDate(caseRecord.openedDate)}
+              </p>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Overdue follow-up banner */}
+      {isOverdue && (
+        <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-800">Follow-up overdue</p>
+            <p className="text-xs text-red-600">
+              Follow-up was due {formatDate(caseRecord.followUpDate!)}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Description */}
-          {caseRecord.description && (
+          {/* Description (only show when NOT editing, since edit mode is in header) */}
+          {!isEditing && caseRecord.description && (
             <Card>
               <CardHeader>
                 <h3 className="font-semibold text-gray-900">Description</h3>
@@ -317,15 +532,77 @@ export default async function CaseDetailPage({
             </CardContent>
           </Card>
 
-          {/* Priority Card */}
+          {/* Priority Card — now editable */}
           <Card>
             <CardHeader>
               <h3 className="font-semibold text-gray-900 text-sm">Priority</h3>
             </CardHeader>
             <CardContent>
-              <Badge className={PRIORITY_COLORS[caseRecord.priority] || "bg-gray-100 text-gray-800"}>
-                {caseRecord.priority}
-              </Badge>
+              <form action={updateCasePriority} className="space-y-3">
+                <select
+                  name="priority"
+                  defaultValue={caseRecord.priority}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+                <div className="flex items-center gap-2">
+                  <Badge className={PRIORITY_COLORS[caseRecord.priority] || "bg-gray-100 text-gray-800"}>
+                    {caseRecord.priority}
+                  </Badge>
+                  <span className="text-xs text-gray-500">current</span>
+                </div>
+                <Button type="submit" size="sm" className="w-full">
+                  <Save className="h-4 w-4 mr-2" />
+                  Update Priority
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Follow-up Date Card */}
+          <Card>
+            <CardHeader>
+              <h3 className="font-semibold text-gray-900 text-sm">Follow-up Date</h3>
+            </CardHeader>
+            <CardContent>
+              <form action={updateFollowUpDate} className="space-y-3">
+                <input
+                  type="date"
+                  name="followUpDate"
+                  defaultValue={
+                    caseRecord.followUpDate
+                      ? new Date(caseRecord.followUpDate).toISOString().split("T")[0]
+                      : ""
+                  }
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {caseRecord.followUpDate && (
+                  <div className="flex items-center gap-2">
+                    {isOverdue ? (
+                      <Badge className="bg-red-100 text-red-800">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Overdue
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-green-100 text-green-800">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Scheduled
+                      </Badge>
+                    )}
+                    <span className="text-xs text-gray-500">
+                      {formatDate(caseRecord.followUpDate)}
+                    </span>
+                  </div>
+                )}
+                <Button type="submit" size="sm" className="w-full">
+                  <Save className="h-4 w-4 mr-2" />
+                  {caseRecord.followUpDate ? "Update" : "Set"} Follow-up
+                </Button>
+              </form>
             </CardContent>
           </Card>
 
@@ -371,13 +648,29 @@ export default async function CaseDetailPage({
             </CardContent>
           </Card>
 
-          {/* Category Card */}
+          {/* Category Card — now editable */}
           <Card>
             <CardHeader>
               <h3 className="font-semibold text-gray-900 text-sm">Category</h3>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-700">{caseRecord.category}</p>
+              <form action={updateCaseCategory} className="space-y-3">
+                <select
+                  name="category"
+                  defaultValue={caseRecord.category}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {categoryOptions.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat.charAt(0) + cat.slice(1).toLowerCase()}
+                    </option>
+                  ))}
+                </select>
+                <Button type="submit" size="sm" className="w-full">
+                  <Save className="h-4 w-4 mr-2" />
+                  Update Category
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </div>

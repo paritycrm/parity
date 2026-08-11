@@ -13,12 +13,14 @@ const PAGE_SIZE = 50;
 export default async function DonationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; type?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; type?: string; page?: string; dateFrom?: string; dateTo?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const typeFilter = params.type || "";
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
+  const dateFrom = params.dateFrom || "";
+  const dateTo = params.dateTo || "";
 
   const where = {
     AND: [
@@ -32,6 +34,16 @@ export default async function DonationsPage({
           }
         : {},
       typeFilter ? { type: typeFilter } : {},
+      ...(dateFrom || dateTo
+        ? [
+            {
+              date: {
+                ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+                ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+              },
+            },
+          ]
+        : []),
     ],
   };
 
@@ -55,6 +67,8 @@ export default async function DonationsPage({
   const paginationParams: Record<string, string> = {};
   if (search) paginationParams.search = search;
   if (typeFilter) paginationParams.type = typeFilter;
+  if (dateFrom) paginationParams.dateFrom = dateFrom;
+  if (dateTo) paginationParams.dateTo = dateTo;
 
   const typeColors: Record<string, string> = {
     DONATION: "bg-green-100 text-green-800",
@@ -126,6 +140,18 @@ export default async function DonationsPage({
             <option value="GRANT">Grant</option>
             <option value="IN_KIND">In Kind</option>
           </select>
+          <input
+            name="dateFrom"
+            type="date"
+            defaultValue={dateFrom}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            name="dateTo"
+            type="date"
+            defaultValue={dateTo}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
           <Button type="submit" variant="outline" size="sm">
             Filter
           </Button>

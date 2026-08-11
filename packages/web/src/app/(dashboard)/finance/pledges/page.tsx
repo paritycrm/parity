@@ -13,12 +13,14 @@ const PAGE_SIZE = 50;
 export default async function PledgesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; page?: string; dateFrom?: string; dateTo?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
+  const dateFrom = params.dateFrom || "";
+  const dateTo = params.dateTo || "";
 
   const where = {
     AND: [
@@ -35,9 +37,25 @@ export default async function PledgesPage({
     ],
   };
 
-  const [pledges, totalCount] = await Promise.all([
+  const listWhere = {
+    AND: [
+      ...where.AND,
+      ...(dateFrom || dateTo
+        ? [
+            {
+              startDate: {
+                ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+                ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+              },
+            },
+          ]
+        : []),
+    ],
+  };
+
+  const [pledges, totalCount, statsAggregate, activePledgesCount] = await Promise.all([
     prisma.pledge.findMany({
-      where,
+      where: listWhere,
       include: {
         contact: true,
         campaign: true,
@@ -47,7 +65,20 @@ export default async function PledgesPage({
       skip: (currentPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    prisma.pledge.count({ where }),
+    prisma.pledge.count({ where: listWhere }),
+    prisma.pledge.aggregate({
+      where,
+      _count: { _all: true },
+      _sum: { amount: true, totalFulfilled: true },
+    }),
+    prisma.pledge.count({
+      where: {
+        AND: [
+          ...where.AND,
+          { status: "ACTIVE" },
+        ],
+      },
+    }),
   ]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
@@ -55,13 +86,15 @@ export default async function PledgesPage({
   const paginationParams: Record<string, string> = {};
   if (search) paginationParams.search = search;
   if (statusFilter) paginationParams.status = statusFilter;
+  if (dateFrom) paginationParams.dateFrom = dateFrom;
+  if (dateTo) paginationParams.dateTo = dateTo;
 
-  // Calculate stats
+  // Calculate stats (not date-filtered)
   const stats = {
-    totalPledges: pledges.length,
-    totalAmount: pledges.reduce((sum, p) => sum + Number(p.amount), 0),
-    totalFulfilled: pledges.reduce((sum, p) => sum + Number(p.totalFulfilled), 0),
-    activePledges: pledges.filter((p) => p.status === "ACTIVE").length,
+    totalPledges: statsAggregate._count._all,
+    totalAmount: Number(statsAggregate._sum.amount || 0),
+    totalFulfilled: Number(statsAggregate._sum.totalFulfilled || 0),
+    activePledges: activePledgesCount,
   };
 
   const statusColors: Record<string, string> = {
@@ -143,6 +176,18 @@ export default async function PledgesPage({
             <option value="OVERDUE">Overdue</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
+          <input
+            name="dateFrom"
+            type="date"
+            defaultValue={dateFrom}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            name="dateTo"
+            type="date"
+            defaultValue={dateTo}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
           <Button type="submit" variant="outline" size="sm">
             Filter
           </Button>

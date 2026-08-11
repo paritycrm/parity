@@ -1,20 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { getSystemSettings } from "@/lib/settings";
 import Link from "next/link";
-import { Users, Plus, Search, Ticket, AlertCircle, Crown, Heart, Package } from "lucide-react";
+import { Users, Plus, Search, Ticket, AlertCircle, Crown, Heart, Package, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
+import { ExportButton } from "@/components/ui/export-button";
 
 const PAGE_SIZE = 50;
 
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; type?: string; lottery?: string; missing?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; type?: string; lottery?: string; missing?: string; page?: string; archived?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
@@ -22,6 +23,7 @@ export default async function ContactsPage({
   const lotteryFilter = params.lottery || "";
   const missingFilter = params.missing || "";
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
+  const showArchived = params.archived === "true";
 
   const where = {
     AND: [
@@ -40,6 +42,8 @@ export default async function ContactsPage({
       lotteryFilter === "yes" ? { isLotteryMember: true } : {},
       missingFilter === "phone" ? { OR: [{ phone: null }, { phone: "" }] } : {},
       missingFilter === "email" ? { OR: [{ email: null }, { email: "" }] } : {},
+      // Hide archived contacts by default; show all when "Show Archived" is on
+      showArchived ? {} : { isArchived: false },
     ],
   };
 
@@ -74,6 +78,7 @@ export default async function ContactsPage({
   if (typeFilter) paginationParams.type = typeFilter;
   if (lotteryFilter) paginationParams.lottery = lotteryFilter;
   if (missingFilter) paginationParams.missing = missingFilter;
+  if (showArchived) paginationParams.archived = "true";
 
   const typeColors: Record<string, string> = {
     DONOR: "bg-green-100 text-green-800",
@@ -89,12 +94,21 @@ export default async function ContactsPage({
             {totalCount.toLocaleString()} contact{totalCount !== 1 ? "s" : ""}
           </p>
         </div>
-        <Link href="/crm/contacts/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Contact
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportButton />
+          <Link href="/crm/contacts/import">
+            <Button variant="outline">
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+          </Link>
+          <Link href="/crm/contacts/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Contact
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Missing data banner */}
@@ -153,6 +167,16 @@ export default async function ContactsPage({
             <option value="phone">Missing Phone</option>
             <option value="email">Missing Email</option>
           </select>
+          <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap cursor-pointer">
+            <input
+              type="checkbox"
+              name="archived"
+              value="true"
+              defaultChecked={showArchived}
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            Show Archived
+          </label>
           <Button type="submit" variant="outline" size="sm">
             Filter
           </Button>
@@ -199,7 +223,7 @@ export default async function ContactsPage({
                   const lifetimeTotal = contact.donations.reduce((sum, d) => sum + Number(d.amount), 0);
                   const isGold = lifetimeTotal >= Number(systemSettings.goldDonorThreshold);
                   return (
-                  <tr key={contact.id} className={isGold ? "bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 transition-colors" : "hover:bg-gray-50 transition-colors"}>
+                  <tr key={contact.id} className={`${isGold ? "bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100" : "hover:bg-gray-50"} ${contact.isArchived ? "opacity-60" : ""} transition-colors`}>
                     <td className="px-4 py-4">
                       <span className="text-xs font-mono text-gray-400">{String(contact.donorId).padStart(5, "0")}</span>
                     </td>
@@ -216,6 +240,11 @@ export default async function ContactsPage({
                             </p>
                             {isGold && (
                               <Crown className="h-3.5 w-3.5 text-amber-500" />
+                            )}
+                            {contact.isArchived && (
+                              <span className="inline-flex items-center rounded-md bg-red-100 text-red-700 px-1.5 py-0.5 text-[10px] font-semibold">
+                                Archived
+                              </span>
                             )}
                           </div>
                           {contact.phone && (

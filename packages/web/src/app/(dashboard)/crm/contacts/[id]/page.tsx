@@ -71,7 +71,7 @@ export default async function ContactDetailPage({
     take: 50,
   });
 
-  // ── Server Actions ──────────────────────────────────────────
+  // -- Server Actions --
 
   async function addFundraisingPage(formData: FormData) {
     "use server";
@@ -358,7 +358,7 @@ export default async function ContactDetailPage({
     redirect(`/crm/contacts/${id}`);
   }
 
-  // ── Computed values ─────────────────────────────────────────
+  // -- Computed values --
 
   const lifetimeDonationTotal = contact.donations.reduce((sum, d) => sum + d.amount, 0);
   const isGoldDonor = lifetimeDonationTotal >= systemSettings.goldDonorThreshold;
@@ -369,15 +369,15 @@ export default async function ContactDetailPage({
   };
 
   const interactionIcons: Record<string, string> = {
-    EMAIL: "📧",
-    CALL: "📞",
-    MEETING: "🤝",
-    NOTE: "📝",
-    DONATION: "💰",
+    EMAIL: "\u{1F4E7}",
+    CALL: "\u{1F4DE}",
+    MEETING: "\u{1F91D}",
+    NOTE: "\u{1F4DD}",
+    DONATION: "\u{1F4B0}",
     LETTER: "✉️",
-    EVENT: "🎪",
+    EVENT: "\u{1F3EA}",
     TASK: "✅",
-    OTHER: "📋",
+    OTHER: "\u{1F4CB}",
   };
 
   const relationships = [
@@ -395,7 +395,7 @@ export default async function ContactDetailPage({
     })),
   ];
 
-  // ── JSX ─────────────────────────────────────────────────────
+  // -- JSX --
 
   const overviewContent = (
     <div className="space-y-6">
@@ -609,7 +609,7 @@ export default async function ContactDetailPage({
                           {d.campaign && <span className="text-indigo-600"> &middot; {d.campaign.name}</span>}
                         </p>
                       </div>
-                      <span className="text-sm font-semibold text-gray-900">£{d.amount.toFixed(2)}</span>
+                      <span className="text-sm font-semibold text-gray-900">&pound;{d.amount.toFixed(2)}</span>
                     </Link>
                   ))}
                 </div>
@@ -630,7 +630,7 @@ export default async function ContactDetailPage({
                     <Link key={ga.id} href={`/finance/gift-aid/${ga.id}`} className="flex items-center justify-between py-2 hover:bg-gray-50 rounded px-2 -mx-2">
                       <div>
                         <p className="text-sm font-medium text-gray-900">
-                          {formatDate(ga.startDate)} — {ga.endDate ? formatDate(ga.endDate) : "Ongoing"}
+                          {formatDate(ga.startDate)} &mdash; {ga.endDate ? formatDate(ga.endDate) : "Ongoing"}
                         </p>
                         <p className="text-xs text-gray-500">
                           {ga.type === "RETAIL" ? "Retail Gift Aid" : "Standard Gift Aid"}
@@ -700,7 +700,7 @@ export default async function ContactDetailPage({
                           <p className="text-xs text-gray-500 font-mono">{order.orderNumber}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-gray-900">£{order.totalAmount.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-gray-900">&pound;{order.totalAmount.toFixed(2)}</p>
                           <Badge className={
                             order.paymentStatus === "PAID" || order.paymentStatus === "FREE" ? "bg-green-100 text-green-800" :
                             order.paymentStatus === "UNPAID" ? "bg-yellow-100 text-yellow-800" :
@@ -719,7 +719,7 @@ export default async function ContactDetailPage({
                       )}
                       {order.giftAidDeclared && order.giftAidTotal > 0 && (
                         <p className="text-xs text-amber-700 mt-1">
-                          Gift Aid: £{(order.giftAidTotal * 0.25).toFixed(2)} claimable
+                          Gift Aid: &pound;{(order.giftAidTotal * 0.25).toFixed(2)} claimable
                         </p>
                       )}
                     </div>
@@ -762,12 +762,12 @@ export default async function ContactDetailPage({
                       )}
                       <div className="flex items-center gap-4 mt-2">
                         <div>
-                          <p className="text-xl font-bold text-purple-700">£{fp.totalRaised.toFixed(2)}</p>
+                          <p className="text-xl font-bold text-purple-700">&pound;{fp.totalRaised.toFixed(2)}</p>
                           <p className="text-xs text-gray-500">raised</p>
                         </div>
                         {fp.targetAmount && fp.targetAmount > 0 && (
                           <div>
-                            <p className="text-sm font-medium text-gray-700">of £{fp.targetAmount.toFixed(2)}</p>
+                            <p className="text-sm font-medium text-gray-700">of &pound;{fp.targetAmount.toFixed(2)}</p>
                             <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
                               <div className="h-2 bg-purple-600 rounded-full" style={{ width: `${Math.min(100, (fp.totalRaised / fp.targetAmount) * 100)}%` }} />
                             </div>
@@ -775,7 +775,7 @@ export default async function ContactDetailPage({
                         )}
                         {fp.giftAidTotal > 0 && (
                           <div>
-                            <p className="text-sm font-medium text-amber-700">+£{fp.giftAidTotal.toFixed(2)}</p>
+                            <p className="text-sm font-medium text-amber-700">+&pound;{fp.giftAidTotal.toFixed(2)}</p>
                             <p className="text-xs text-gray-500">gift aid</p>
                           </div>
                         )}
@@ -803,7 +803,7 @@ export default async function ContactDetailPage({
                               <span className="text-gray-700">{d.donorDisplayName || "Anonymous"}</span>
                               <span className="text-gray-400">{formatDate(d.donationDate)}</span>
                             </div>
-                            <span className="font-bold text-purple-700">£{d.amount.toFixed(2)}</span>
+                            <span className="font-bold text-purple-700">&pound;{d.amount.toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
@@ -846,7 +846,7 @@ export default async function ContactDetailPage({
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-2xl font-bold text-gray-900">
-              £{lifetimeDonationTotal.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              &pound;{lifetimeDonationTotal.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             <p className="text-sm text-gray-500 mt-1">Lifetime Total</p>
           </CardContent>
@@ -860,7 +860,7 @@ export default async function ContactDetailPage({
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-2xl font-bold text-gray-900">
-              £{contact.donations.length > 0
+              &pound;{contact.donations.length > 0
                 ? (lifetimeDonationTotal / contact.donations.length).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : "0.00"}
             </p>
@@ -914,7 +914,7 @@ export default async function ContactDetailPage({
                         </Badge>
                       </td>
                       <td className="py-3 px-2 text-right font-semibold text-gray-900">
-                        £{d.amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        &pound;{d.amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="py-3 px-2 text-gray-600">{d.method || "—"}</td>
                       <td className="py-3 px-2">
@@ -931,7 +931,7 @@ export default async function ContactDetailPage({
                               {d.event.name}
                             </Link>
                           )}
-                          {!d.campaign && !d.event && <span className="text-gray-400">—</span>}
+                          {!d.campaign && !d.event && <span className="text-gray-400">{"—"}</span>}
                         </div>
                       </td>
                       <td className="py-3 px-2">
@@ -998,7 +998,7 @@ export default async function ContactDetailPage({
             ) : (
               contact.interactions.map((interaction) => (
                 <div key={interaction.id} className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
-                  <span className="text-lg mt-0.5">{interactionIcons[interaction.type] || "📋"}</span>
+                  <span className="text-lg mt-0.5">{interactionIcons[interaction.type] || "\u{1F4CB}"}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-gray-900">{interaction.subject}</p>
@@ -1008,7 +1008,7 @@ export default async function ContactDetailPage({
                       <p className="text-sm text-gray-500 mt-0.5">{interaction.description}</p>
                     )}
                     <p className="text-xs text-gray-400 mt-1">
-                      {formatDate(interaction.date)} • {interaction.createdBy.name}
+                      {formatDate(interaction.date)} {"•"} {interaction.createdBy.name}
                     </p>
                   </div>
                 </div>
@@ -1041,7 +1041,7 @@ export default async function ContactDetailPage({
                 <div key={note.id} className="py-3 border-b border-gray-50 last:border-0">
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.content}</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {formatDate(note.createdAt)} • {note.createdBy.name}
+                    {formatDate(note.createdAt)} {"•"} {note.createdBy.name}
                   </p>
                 </div>
               ))
@@ -1062,7 +1062,7 @@ export default async function ContactDetailPage({
         <h1 className="text-2xl font-bold text-gray-900">Contact Details</h1>
       </div>
 
-      {/* Profile Card — always visible above tabs */}
+      {/* Profile Card -- always visible above tabs */}
       <Card className={isGoldDonor ? "border-2 border-amber-400 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 shadow-lg ring-1 ring-amber-200" : ""}>
         <CardContent className="pt-6">
           <div className="flex items-start gap-4">
@@ -1076,7 +1076,7 @@ export default async function ContactDetailPage({
                   </h2>
                   <p className="text-xs font-mono text-gray-400 mt-0.5">Donor ID: {String(contact.donorId).padStart(5, "0")}</p>
 
-                  {/* Status badges — uniform row */}
+                  {/* Status badges */}
                   <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                     {contact.types.map((t) => (
                       <span key={t} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${typeColors[t] || "bg-gray-100 text-gray-800"}`}>
@@ -1119,7 +1119,7 @@ export default async function ContactDetailPage({
                     {contact.volunteerProfile ? (
                       <Link href={`/volunteers/${contact.volunteerProfile.id}`}>
                         <Badge className="bg-indigo-100 text-indigo-800 cursor-pointer hover:bg-indigo-200">
-                          View Volunteer Profile →
+                          View Volunteer Profile &rarr;
                         </Badge>
                       </Link>
                     ) : contact.types.includes("VOLUNTEER") ? (
@@ -1167,12 +1167,15 @@ export default async function ContactDetailPage({
                 )}
                 {contact.organisation && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Building2 className="h-4 w-4" /> {contact.organisation.name}
+                    <Building2 className="h-4 w-4" />
+                    <Link href={`/crm/organisations/${contact.organisationId}`} className="text-indigo-600 hover:underline">
+                      {contact.organisation.name}
+                    </Link>
                   </div>
                 )}
                 {contact.dateOfBirth && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    🎂 Born: {contact.dateOfBirth}
+                    {"\u{1F382}"} Born: {contact.dateOfBirth}
                   </div>
                 )}
               </div>
@@ -1180,7 +1183,7 @@ export default async function ContactDetailPage({
                 <div className="flex items-center gap-2 mt-3 p-2 bg-green-50 rounded-lg">
                   <PoundSterling className="h-4 w-4 text-green-600" />
                   <span className="text-sm font-semibold text-green-800">
-                    Lifetime Donations: £{lifetimeDonationTotal.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Lifetime Donations: &pound;{lifetimeDonationTotal.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                   <span className="text-xs text-green-600">({contact.donations.length} donation{contact.donations.length !== 1 ? "s" : ""})</span>
                 </div>

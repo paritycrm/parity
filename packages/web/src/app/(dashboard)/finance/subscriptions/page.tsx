@@ -13,13 +13,15 @@ const PAGE_SIZE = 50;
 export default async function SubscriptionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; frequency?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; frequency?: string; page?: string; dateFrom?: string; dateTo?: string }>;
 }) {
   const params = await searchParams;
   const search = params.search || "";
   const statusFilter = params.status || "";
   const frequencyFilter = params.frequency || "";
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
+  const dateFrom = params.dateFrom || "";
+  const dateTo = params.dateTo || "";
 
   // Calculate summary metrics
   const [
@@ -69,6 +71,16 @@ export default async function SubscriptionsPage({
         : {},
       statusFilter ? { status: statusFilter } : {},
       frequencyFilter ? { frequency: frequencyFilter } : {},
+      ...(dateFrom || dateTo
+        ? [
+            {
+              startDate: {
+                ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+                ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+              },
+            },
+          ]
+        : []),
     ],
   };
 
@@ -92,6 +104,8 @@ export default async function SubscriptionsPage({
   if (search) paginationParams.search = search;
   if (statusFilter) paginationParams.status = statusFilter;
   if (frequencyFilter) paginationParams.frequency = frequencyFilter;
+  if (dateFrom) paginationParams.dateFrom = dateFrom;
+  if (dateTo) paginationParams.dateTo = dateTo;
 
   const statusColors: Record<string, string> = {
     ACTIVE: "bg-green-100 text-green-800",
@@ -179,6 +193,18 @@ export default async function SubscriptionsPage({
             <option value="QUARTERLY">Quarterly</option>
             <option value="ANNUALLY">Annually</option>
           </select>
+          <input
+            name="dateFrom"
+            type="date"
+            defaultValue={dateFrom}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            name="dateTo"
+            type="date"
+            defaultValue={dateTo}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
           <Button type="submit" variant="outline" size="sm">
             Filter
           </Button>
