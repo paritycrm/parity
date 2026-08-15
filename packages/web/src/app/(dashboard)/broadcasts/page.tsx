@@ -1,22 +1,66 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Radio, Plus, CheckCircle, HelpCircle, XCircle, Clock, Users, ChevronRight } from "lucide-react";
+import { Radio, Plus, CheckCircle, HelpCircle, XCircle, Clock, Users, ChevronRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
+import { Card } from "@/components/ui/card";
 
 const PAGE_SIZE = 50;
+
+const STATUS_TABS = [
+  { key: "", label: "All" },
+  { key: "OPEN", label: "Open" },
+  { key: "FILLED", label: "Filled" },
+  { key: "CANCELLED", label: "Cancelled" },
+  { key: "EXPIRED", label: "Expired" },
+] as const;
 
 export default async function BroadcastsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; dateFrom?: string; dateTo?: string; page?: string }>;
 }) {
   const params = await searchParams;
+  const search = params.search || "";
+  const statusFilter = params.status || "";
+  const dateFrom = params.dateFrom || "";
+  const dateTo = params.dateTo || "";
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
-  const where = {};
+  const now = new Date();
+
+  // Build where clause from filters
+  const where: any = {
+    AND: [
+      // Text search by title
+      search
+        ? { title: { contains: search, mode: "insensitive" as const } }
+        : {},
+      // Status filter
+      ...(statusFilter === "OPEN"
+        ? [{ status: "OPEN", expiresAt: { gte: now } }]
+        : statusFilter === "EXPIRED"
+        ? [{ status: "OPEN", expiresAt: { lt: now } }]
+        : statusFilter === "FILLED"
+        ? [{ status: "FILLED" }]
+        : statusFilter === "CANCELLED"
+        ? [{ status: "CANCELLED" }]
+        : []),
+      // Date range filter on targetDate
+      ...(dateFrom || dateTo
+        ? [
+            {
+              targetDate: {
+                ...(dateFrom ? { gte: dateFrom } : {}),
+                ...(dateTo ? { lte: dateTo } : {}),
+              },
+            },
+          ]
+        : []),
+    ],
+  };
 
   const [broadcasts, totalCount] = await Promise.all([
     prisma.broadcast.findMany({
@@ -35,7 +79,24 @@ export default async function BroadcastsPage({
   ]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-  const paginationParams = {};
+
+  // Build pagination params to preserve filters across pages
+  const paginationParams: Record<string, string> = {};
+  if (search) paginationParams.search = search;
+  if (statusFilter) paginationParams.status = statusFilter;
+  if (dateFrom) paginationParams.dateFrom = dateFrom;
+  if (dateTo) paginationParams.dateTo = dateTo;
+
+  // Helper to build tab URLs preserving other params
+  function tabUrl(status: string) {
+    const p = new URLSearchParams();
+    if (search) p.set("search", search);
+    if (status) p.set("status", status);
+    if (dateFrom) p.set("dateFrom", dateFrom);
+    if (dateTo) p.set("dateTo", dateTo);
+    const qs = p.toString();
+    return `/broadcasts${qs ? `?${qs}` : ""}`;
+  }
 
   return (
     <div className="space-y-6">
@@ -51,6 +112,63 @@ export default async function BroadcastsPage({
           </Button>
         </Link>
       </div>
+
+      {/* Status tabs */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {STATUS_TABS.map((tab) => {
+          const isActive = statusFilter === tab.key;
+          return (
+            <Link
+              key={tab.key}
+              href={tabUrl(tab.key)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                isActive
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Search and date filters */}
+      <Card className="p-4">
+        <form className="flex flex-col sm:flex-row gap-3">
+          {/* Preserve current status tab across form submission */}
+          {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
+          <div className="flex items-center gap-2 flex-1">
+            <Search className="h-5 w-5 text-gray-400" />
+            <input
+              name="search"
+              type="text"
+              defaultValue={search}
+              placeholder="Search broadcasts by title..."
+              className="flex-1 border-0 bg-transparent text-sm focus:outline-none focus:ring-0"
+            />
+          </div>
+          <input
+            name="dateFrom"
+            type="date"
+            defaultValue={dateFrom}
+            placeholder="From date"
+            title="Target date from"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            name="dateTo"
+            type="date"
+            defaultValue={dateTo}
+            placeholder="To date"
+            title="Target date to"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <Button type="submit" variant="outline" size="sm">
+            Filter
+          </Button>
+        </form>
+      </Card>
 
       {broadcasts.length === 0 ? (
         <EmptyState

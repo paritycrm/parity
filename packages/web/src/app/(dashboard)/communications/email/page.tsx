@@ -10,6 +10,7 @@ import {
   Send,
   Users,
   Filter,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -196,12 +197,18 @@ export default async function EmailCommunicationsPage({
         <Link href="/communications/sms" className="text-gray-400 hover:text-gray-600">
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Mail className="h-6 w-6" /> Email Communications
           </h1>
           <p className="text-gray-500 mt-1">Send targeted emails based on event participation</p>
         </div>
+        <Link href="/communications/email/history">
+          <Button variant="outline" className="gap-2">
+            <Clock className="h-4 w-4" />
+            Campaign History
+          </Button>
+        </Link>
       </div>
 
       {/* Step 1: Build Audience */}
