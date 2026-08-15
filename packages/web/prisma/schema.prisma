@@ -287,6 +287,7 @@ model Contact {
   retailGiftAidNotifications RetailGiftAidNotification[]
   softCredits                SoftCredit[]
   giftAidClaimItems           GiftAidClaimItem[]
+  consentRecords              ConsentRecord[]
 
   @@index([email])
   @@index([lastName, firstName])
@@ -1842,6 +1843,7 @@ model ConsentRecord {
   recordedById  String // FK → User who recorded this
   recordedAt    DateTime @default(now())
 
+  contact    Contact @relation(fields: [contactId], references: [id])
   recordedBy User @relation("ConsentRecordedBy", fields: [recordedById], references: [id])
 
   @@index([contactId])
@@ -1957,6 +1959,7 @@ model Subscription {
   externalId      String?
   startDate       DateTime
   nextPaymentDate DateTime?
+  endDate         DateTime?
   cancelledAt     DateTime?
   donationId      String?
   membershipId    String?

@@ -107,7 +107,7 @@ export default async function SubscriptionDetailPage({
           entityType: "Subscription",
           entityId: id,
           action: "UPDATE",
-          changes,
+          details: JSON.stringify(changes),
           userId: session.id,
         },
       });
@@ -148,7 +148,7 @@ export default async function SubscriptionDetailPage({
           entityType: "Subscription",
           entityId: id,
           action: "UPDATE",
-          changes,
+          details: JSON.stringify(changes),
           userId: session.id,
         },
       });
@@ -173,12 +173,12 @@ export default async function SubscriptionDetailPage({
         entityType: "Subscription",
         entityId: id,
         action: "DELETE",
-        changes: existing
-          ? {
+        details: existing
+          ? JSON.stringify({
               amount: { old: existing.amount, new: null },
               status: { old: existing.status, new: null },
               frequency: { old: existing.frequency, new: null },
-            }
+            })
           : null,
         userId: session.id,
       },
@@ -546,7 +546,7 @@ export default async function SubscriptionDetailPage({
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-xs">
-                        {formatChanges(log.changes)}
+                        {formatChanges(JSON.parse(log.details || '{}'))}
                       </td>
                     </tr>
                   ))}

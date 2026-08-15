@@ -114,7 +114,7 @@ export default async function MembershipDetailPage({
         entityType: "Membership",
         entityId: id,
         action: "UPDATE",
-        changes,
+        details: JSON.stringify(changes),
         userId: session.id,
       },
     });
@@ -146,9 +146,9 @@ export default async function MembershipDetailPage({
         entityType: "Membership",
         entityId: id,
         action: "UPDATE",
-        changes: {
+        details: JSON.stringify({
           status: { old: existing.status, new: "CANCELLED" },
-        },
+        }),
         userId: session.id,
       },
     });
@@ -178,9 +178,9 @@ export default async function MembershipDetailPage({
         entityType: "Membership",
         entityId: id,
         action: "UPDATE",
-        changes: {
+        details: JSON.stringify({
           autoRenew: { old: current.autoRenew, new: newAutoRenew },
-        },
+        }),
         userId: session.id,
       },
     });
@@ -204,8 +204,8 @@ export default async function MembershipDetailPage({
         entityType: "Membership",
         entityId: id,
         action: "DELETE",
-        changes: existing
-          ? {
+        details: existing
+          ? JSON.stringify({
               status: { old: existing.status, new: null },
               autoRenew: { old: existing.autoRenew, new: null },
               startDate: {
@@ -216,7 +216,7 @@ export default async function MembershipDetailPage({
                 old: existing.endDate.toISOString().split("T")[0],
                 new: null,
               },
-            }
+            })
           : null,
         userId: session.id,
       },
@@ -548,7 +548,7 @@ export default async function MembershipDetailPage({
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-xs">
-                        {formatChanges(log.changes)}
+                        {formatChanges(JSON.parse(log.details || '{}'))}
                       </td>
                     </tr>
                   ))}

@@ -119,7 +119,7 @@ export default async function PledgeDetailPage({
           entityType: "Pledge",
           entityId: id,
           action: "UPDATE",
-          changes,
+          details: JSON.stringify(changes),
           userId: session.id,
         },
       });
@@ -144,13 +144,13 @@ export default async function PledgeDetailPage({
         entityType: "Pledge",
         entityId: id,
         action: "DELETE",
-        changes: existing
-          ? {
+        details: existing
+          ? JSON.stringify({
               amount: { old: Number(existing.amount), new: null },
               status: { old: existing.status, new: null },
               frequency: { old: existing.frequency, new: null },
               totalFulfilled: { old: Number(existing.totalFulfilled), new: null },
-            }
+            })
           : null,
         userId: session.id,
       },
@@ -506,7 +506,7 @@ export default async function PledgeDetailPage({
                             </Badge>
                           </td>
                           <td className="px-4 py-3 text-gray-600 text-xs">
-                            {formatChanges(log.changes)}
+                            {formatChanges(JSON.parse(log.details || '{}'))}
                           </td>
                         </tr>
                       ))}

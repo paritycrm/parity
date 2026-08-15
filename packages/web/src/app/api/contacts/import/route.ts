@@ -79,22 +79,23 @@ export async function POST(req: NextRequest) {
         }
 
         try {
+          const noteText = c.notes?.trim() || null;
           const contact = await tx.contact.create({
             data: {
               firstName: c.firstName.trim(),
               lastName: c.lastName.trim(),
               email: c.email?.trim() || null,
               phone: c.phone?.trim() || null,
-              mobile: c.mobile?.trim() || null,
               addressLine1: c.addressLine1?.trim() || null,
               addressLine2: c.addressLine2?.trim() || null,
               city: c.city?.trim() || null,
               postcode: c.postcode?.trim() || null,
               country: c.country?.trim() || null,
               dateOfBirth: c.dateOfBirth?.trim() || null,
-              title: c.title?.trim() || null,
               types: c.types ?? [],
-              notes: c.notes?.trim() || null,
+              notes: noteText
+                ? { create: [{ content: noteText, createdById: session.id }] }
+                : undefined,
               createdById: session.id,
             },
           });

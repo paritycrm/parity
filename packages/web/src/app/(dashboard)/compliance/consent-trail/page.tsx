@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { CheckCircle, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -21,17 +20,19 @@ export default async function ConsentTrailPage({
   const skip = (currentPage - 1) * PAGE_SIZE;
 
   // Build where clause for consent records, including contact name search
-  const where: Prisma.ConsentRecordWhereInput = {
+  const where: any = {
     AND: [
       consentTypeFilter ? { consentType: consentTypeFilter } : {},
       actionFilter ? { action: actionFilter } : {},
       search
         ? {
             contact: {
-              OR: [
-                { firstName: { contains: search, mode: "insensitive" } },
-                { lastName: { contains: search, mode: "insensitive" } },
-              ],
+              is: {
+                OR: [
+                  { firstName: { contains: search, mode: "insensitive" as const } },
+                  { lastName: { contains: search, mode: "insensitive" as const } },
+                ],
+              },
             },
           }
         : {},
@@ -71,16 +72,6 @@ export default async function ConsentTrailPage({
     GRANTED: "bg-green-100 text-green-800",
     WITHDRAWN: "bg-red-100 text-red-800",
     UPDATED: "bg-blue-100 text-blue-800",
-  };
-
-  // Build base URL for pagination links
-  const buildPageUrl = (page: number) => {
-    const urlParams = new URLSearchParams();
-    if (search) urlParams.set("search", search);
-    if (consentTypeFilter) urlParams.set("consentType", consentTypeFilter);
-    if (actionFilter) urlParams.set("action", actionFilter);
-    urlParams.set("page", String(page));
-    return `/compliance/consent-trail?${urlParams.toString()}`;
   };
 
   return (
@@ -237,7 +228,14 @@ export default async function ConsentTrailPage({
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            buildPageUrl={buildPageUrl}
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+            baseUrl="/compliance/consent-trail"
+            searchParams={{
+              ...(search ? { search } : {}),
+              ...(consentTypeFilter ? { consentType: consentTypeFilter } : {}),
+              ...(actionFilter ? { action: actionFilter } : {}),
+            }}
           />
         </div>
       )}

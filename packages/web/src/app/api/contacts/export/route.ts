@@ -66,12 +66,10 @@ export async function GET(request: NextRequest) {
   // CSV header row
   const headers = [
     "Donor ID",
-    "Title",
     "First Name",
     "Last Name",
     "Email",
     "Phone",
-    "Mobile",
     "Address Line 1",
     "Address Line 2",
     "City",
@@ -95,12 +93,10 @@ export async function GET(request: NextRequest) {
 
     return [
       escapeCsv(String(contact.donorId).padStart(5, "0")),
-      escapeCsv(contact.title),
       escapeCsv(contact.firstName),
       escapeCsv(contact.lastName),
       escapeCsv(contact.email),
       escapeCsv(contact.phone),
-      escapeCsv(contact.mobile),
       escapeCsv(contact.addressLine1),
       escapeCsv(contact.addressLine2),
       escapeCsv(contact.city),
