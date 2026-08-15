@@ -114,8 +114,8 @@ export default async function EventsPage({
     },
   });
 
-  const annualIncome = allFYEvents.reduce((sum, e) => sum + e.incomeLines.reduce((s, l) => s + l.actual, 0), 0);
-  const annualCosts = allFYEvents.reduce((sum, e) => sum + e.costLines.reduce((s, l) => s + l.actual, 0), 0);
+  const annualIncome = allFYEvents.reduce((sum, e) => sum + e.incomeLines.reduce((s, l) => s + Number(l.actual), 0), 0);
+  const annualCosts = allFYEvents.reduce((sum, e) => sum + e.costLines.reduce((s, l) => s + Number(l.actual), 0), 0);
   const annualProfit = annualIncome - annualCosts;
 
   const annualIncomeTarget = (settings as any).eventsIncomeTarget || 0;

@@ -56,8 +56,8 @@ export function ClaimableTable({
   }, [donations, search]);
 
   const included = donations.filter((d) => !excluded.has(d.id));
-  const totalDonations = included.reduce((sum, d) => sum + d.amount, 0);
-  const totalGiftAid = included.reduce((sum, d) => sum + d.giftAidAmount, 0);
+  const totalDonations = included.reduce((sum, d) => sum + Number(d.amount), 0);
+  const totalGiftAid = included.reduce((sum, d) => sum + Number(d.giftAidAmount), 0);
   const invalidCount = included.filter((d) => !d.hasValidPostcode).length;
 
   function toggleExclude(id: string) {
@@ -125,7 +125,7 @@ export function ClaimableTable({
               {formatCurrency(
                 donations
                   .filter((d) => excluded.has(d.id))
-                  .reduce((sum, d) => sum + d.amount, 0)
+                  .reduce((sum, d) => sum + Number(d.amount), 0)
               )}{" "}
               excluded
             </p>

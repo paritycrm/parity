@@ -53,7 +53,7 @@ export default async function BankDocumentsPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {bankDocs.map((doc) => {
-                  const total = doc.donations.reduce((sum, d) => sum + d.amount, 0);
+                  const total = doc.donations.reduce((sum, d) => sum + Number(d.amount), 0);
                   return (
                     <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm">

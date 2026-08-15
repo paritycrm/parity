@@ -70,7 +70,7 @@ export default async function BankDocumentDetailPage({
     redirect(`/finance/bank-documents/${id}`);
   }
 
-  const total = bankDoc.donations.reduce((sum, d) => sum + d.amount, 0);
+  const total = bankDoc.donations.reduce((sum, d) => sum + Number(d.amount), 0);
   const statusColors: Record<string, string> = {
     OPEN: "bg-blue-100 text-blue-800",
     CLOSED: "bg-green-100 text-green-800",

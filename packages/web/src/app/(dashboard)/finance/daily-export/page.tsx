@@ -85,7 +85,7 @@ export default function DailyExportPage() {
     return `${dd}/${mm}/${yyyy}`;
   }
 
-  const total = donations.reduce((sum, d) => sum + d.amount, 0);
+  const total = donations.reduce((sum, d) => sum + Number(d.amount), 0);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

@@ -53,7 +53,7 @@ export function BankDocDonations({
   const [saving, setSaving] = useState(false);
   const [contactKey, setContactKey] = useState(0);
 
-  const total = donations.reduce((sum, d) => sum + d.amount, 0);
+  const total = donations.reduce((sum, d) => sum + Number(d.amount), 0);
 
   function startEdit(d: Donation) {
     setEditingId(d.id);

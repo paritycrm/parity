@@ -54,7 +54,7 @@ export default async function EventDetailPage({
   const profit = totalIncome - totalCosts;
   const finance = event.finance;
   const isCompleted = event.status === "COMPLETED" && !!finance?.completedAt;
-  const totalDonations = event.donations.reduce((sum, d) => sum + d.amount, 0);
+  const totalDonations = event.donations.reduce((sum, d) => sum + Number(d.amount), 0);
 
   const statusColors: Record<string, string> = {
     PLANNED: "bg-gray-100 text-gray-800",

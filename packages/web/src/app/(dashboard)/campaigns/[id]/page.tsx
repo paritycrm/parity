@@ -49,7 +49,7 @@ export default async function CampaignDetailPage({
     CANCELLED: "bg-red-100 text-red-800",
   };
 
-  const totalDonations = campaign.donations.reduce((sum, donation) => sum + donation.amount, 0);
+  const totalDonations = campaign.donations.reduce((sum, donation) => sum + Number(donation.amount), 0);
 
   async function addSegment(formData: FormData) {
     "use server";

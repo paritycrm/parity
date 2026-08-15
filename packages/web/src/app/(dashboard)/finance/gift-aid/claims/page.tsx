@@ -44,7 +44,7 @@ export default async function GiftAidClaimsPage({
     .reduce((sum, c) => sum + (c.amountReceived || c.totalClaimable), 0);
   const pendingAmount = claims
     .filter((c) => ["DRAFT", "NOTIFICATIONS_SENT", "READY", "SUBMITTED"].includes(c.status))
-    .reduce((sum, c) => sum + c.totalClaimable, 0);
+    .reduce((sum, c) => sum + Number(c.totalClaimable), 0);
 
   return (
     <div className="space-y-6">

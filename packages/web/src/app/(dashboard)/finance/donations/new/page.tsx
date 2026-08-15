@@ -167,7 +167,7 @@ export default function NewDonationPage() {
     setSessionClosed(true);
   }
 
-  const sessionTotal = recorded.reduce((sum, d) => sum + d.amount, 0);
+  const sessionTotal = recorded.reduce((sum, d) => sum + Number(d.amount), 0);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

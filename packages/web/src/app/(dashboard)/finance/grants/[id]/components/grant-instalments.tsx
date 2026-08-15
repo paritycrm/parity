@@ -39,8 +39,8 @@ export function GrantInstalments({
   const [showForm, setShowForm] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const totalScheduled = instalments.reduce((sum, i) => sum + i.amount, 0);
-  const totalReceived = instalments.filter((i) => i.received).reduce((sum, i) => sum + i.amount, 0);
+  const totalScheduled = instalments.reduce((sum, i) => sum + Number(i.amount), 0);
+  const totalReceived = instalments.filter((i) => i.received).reduce((sum, i) => sum + Number(i.amount), 0);
   const upcoming = instalments.filter((i) => !i.received && new Date(i.expectedDate) > new Date());
   const overdue = instalments.filter((i) => !i.received && new Date(i.expectedDate) <= new Date());
 
