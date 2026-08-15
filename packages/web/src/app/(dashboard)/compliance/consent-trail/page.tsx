@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { CheckCircle, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ export default async function ConsentTrailPage({
   const skip = (currentPage - 1) * PAGE_SIZE;
 
   // Build where clause for consent records, including contact name search
-  const where: Parameters<typeof prisma.consentRecord.findMany>[0]["where"] = {
+  const where: Prisma.ConsentRecordWhereInput = {
     AND: [
       consentTypeFilter ? { consentType: consentTypeFilter } : {},
       actionFilter ? { action: actionFilter } : {},
