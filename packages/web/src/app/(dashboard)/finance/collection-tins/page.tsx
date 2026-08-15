@@ -59,7 +59,7 @@ export default async function CollectionTinsPage({
       _sum: { amount: true },
     }),
   ]);
-  const totalCollected = collectedAgg._sum.amount || 0;
+  const totalCollected = Number(collectedAgg._sum.amount || 0);
 
   const statusColors: Record<string, string> = {
     IN_STOCK: "bg-blue-100 text-blue-800",
@@ -207,7 +207,7 @@ export default async function CollectionTinsPage({
               <tbody className="divide-y divide-gray-50">
                 {tins.map((tin) => {
                   const tinTotal = tin.movements.reduce(
-                    (s, m) => s + (m.amount || 0),
+                    (s, m) => s + Number(m.amount || 0),
                     0
                   );
                   // Determine what quick action makes sense

@@ -53,9 +53,9 @@ export default async function MyDonationsPage({
     }),
   ]);
 
-  const totalAllTime = allDonations.reduce((s, d) => s + d.amount, 0);
-  const totalTaxYear = taxYearDonations.reduce((s, d) => s + d.amount, 0);
-  const giftAidableTaxYear = taxYearDonations.filter((d) => d.isGiftAidable).reduce((s, d) => s + d.amount, 0);
+  const totalAllTime = allDonations.reduce((s, d) => s + Number(d.amount), 0);
+  const totalTaxYear = taxYearDonations.reduce((s, d) => s + Number(d.amount), 0);
+  const giftAidableTaxYear = taxYearDonations.filter((d) => d.isGiftAidable).reduce((s, d) => s + Number(d.amount), 0);
   const giftAidValue = giftAidableTaxYear * 0.25;
   const hasActiveGiftAid = (contact?.giftAids?.length || 0) > 0;
 

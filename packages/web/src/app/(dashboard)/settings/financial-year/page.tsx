@@ -137,7 +137,7 @@ export default async function FinancialYearSettingsPage() {
         <CardContent>
           <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 mb-6">
             <p className="text-sm text-amber-700">
-              Contacts whose lifetime donations reach <span className="font-bold">£{settings.goldDonorThreshold.toLocaleString("en-GB", { minimumFractionDigits: 2 })}</span> or more will be highlighted with a gold contact card throughout the CRM.
+              Contacts whose lifetime donations reach <span className="font-bold">£{Number(settings.goldDonorThreshold).toLocaleString("en-GB", { minimumFractionDigits: 2 })}</span> or more will be highlighted with a gold contact card throughout the CRM.
             </p>
           </div>
 

@@ -113,11 +113,11 @@ export default async function CampaignDetailPage({
     redirect("/campaigns");
   }
 
-  const progress = campaign.budgetTarget && campaign.budgetTarget > 0
-    ? Math.min(Math.round((campaign.actualRaised / campaign.budgetTarget) * 100), 100)
+  const progress = campaign.budgetTarget && Number(campaign.budgetTarget) > 0
+    ? Math.min(Math.round((Number(campaign.actualRaised) / Number(campaign.budgetTarget)) * 100), 100)
     : 0;
-  const progressRaw = campaign.budgetTarget && campaign.budgetTarget > 0
-    ? Math.round((campaign.actualRaised / campaign.budgetTarget) * 100)
+  const progressRaw = campaign.budgetTarget && Number(campaign.budgetTarget) > 0
+    ? Math.round((Number(campaign.actualRaised) / Number(campaign.budgetTarget)) * 100)
     : 0;
 
   const segmentedTags = campaign.segments.map((s) => s.tagId);
@@ -166,24 +166,24 @@ export default async function CampaignDetailPage({
               <div>
                 <p className="text-xs text-gray-500 uppercase">Budget Target</p>
                 <p className="text-sm font-medium text-gray-900">
-                  {campaign.budgetTarget ? `£${campaign.budgetTarget.toFixed(2)}` : "—"}
+                  {campaign.budgetTarget ? `£${Number(campaign.budgetTarget).toFixed(2)}` : "—"}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase">Actual Raised</p>
                 <p className="text-sm font-medium text-gray-900">
-                  £{campaign.actualRaised.toFixed(2)}
+                  £{Number(campaign.actualRaised).toFixed(2)}
                 </p>
               </div>
             </div>
 
             {/* Campaign Progress */}
-            {campaign.budgetTarget && campaign.budgetTarget > 0 && (
+            {campaign.budgetTarget && Number(campaign.budgetTarget) > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium text-gray-700">Campaign Progress</p>
                   <p className="text-sm font-semibold text-gray-900">
-                    £{campaign.actualRaised.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} of £{campaign.budgetTarget.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ({progressRaw}%)
+                    £{Number(campaign.actualRaised).toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} of £{Number(campaign.budgetTarget).toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ({progressRaw}%)
                   </p>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
@@ -326,7 +326,7 @@ export default async function CampaignDetailPage({
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-gray-900">
-                      £{donation.amount.toFixed(2)}
+                      £{Number(donation.amount).toFixed(2)}
                     </p>
                   </div>
                 </Link>

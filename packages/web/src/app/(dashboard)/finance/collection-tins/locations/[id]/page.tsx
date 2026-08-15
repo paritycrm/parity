@@ -41,7 +41,7 @@ export default async function TinLocationDetailPage({
 
   const totalCollected = location.tins.reduce(
     (sum, tin) =>
-      sum + tin.movements.reduce((s, m) => s + (m.amount || 0), 0),
+      sum + tin.movements.reduce((s, m) => s + Number(m.amount || 0), 0),
     0
   );
   const allCollections = location.tins
@@ -318,7 +318,7 @@ export default async function TinLocationDetailPage({
             <div className="space-y-3">
               {location.tins.map((tin) => {
                 const tinTotal = tin.movements.reduce(
-                  (s, m) => s + (m.amount || 0),
+                  (s, m) => s + Number(m.amount || 0),
                   0
                 );
                 return (
@@ -387,7 +387,7 @@ export default async function TinLocationDetailPage({
                     )}
                   </div>
                   <p className="text-sm font-bold text-green-600">
-                    £{(c.amount || 0).toFixed(2)}
+                    £{Number(c.amount || 0).toFixed(2)}
                   </p>
                 </div>
               ))}

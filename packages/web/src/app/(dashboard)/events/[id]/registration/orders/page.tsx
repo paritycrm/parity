@@ -35,10 +35,10 @@ export default async function EventOrdersPage({
   const orders = event.orders || [];
   const totalRevenue = orders
     .filter((o) => o.paymentStatus === "PAID" || o.paymentStatus === "FREE")
-    .reduce((s, o) => s + o.totalAmount, 0);
+    .reduce((s, o) => s + Number(o.totalAmount), 0);
   const totalGiftAid = orders
     .filter((o) => o.giftAidDeclared)
-    .reduce((s, o) => s + o.giftAidTotal * 0.25, 0);
+    .reduce((s, o) => s + Number(o.giftAidTotal) * 0.25, 0);
 
   const paymentStatusColors: Record<string, string> = {
     PAID: "bg-green-100 text-green-800",
@@ -148,13 +148,13 @@ export default async function EventOrdersPage({
                         </div>
                       </td>
                       <td className="py-3 pr-4 font-medium">
-                        £{order.totalAmount.toFixed(2)}
+                        £{Number(order.totalAmount).toFixed(2)}
                       </td>
                       <td className="py-3 pr-4">
                         {order.giftAidDeclared ? (
                           <span className="text-amber-700 flex items-center gap-1">
                             <Heart className="h-3 w-3" />£
-                            {(order.giftAidTotal * 0.25).toFixed(2)}
+                            {(Number(order.giftAidTotal) * 0.25).toFixed(2)}
                           </span>
                         ) : (
                           <span className="text-gray-400">—</span>

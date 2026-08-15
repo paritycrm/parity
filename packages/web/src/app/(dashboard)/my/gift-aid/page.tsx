@@ -32,9 +32,9 @@ export default async function MyGiftAidPage() {
   ]);
 
   const activeDeclaration = declarations.find((d) => d.status === "ACTIVE");
-  const totalGiftAidable = donations.reduce((s, d) => s + d.amount, 0);
+  const totalGiftAidable = donations.reduce((s, d) => s + Number(d.amount), 0);
   const totalGiftAidValue = totalGiftAidable * 0.25;
-  const claimed = donations.filter((d) => d.giftAidClaimed).reduce((s, d) => s + d.amount * 0.25, 0);
+  const claimed = donations.filter((d) => d.giftAidClaimed).reduce((s, d) => s + Number(d.amount) * 0.25, 0);
   const unclaimed = totalGiftAidValue - claimed;
 
   return (
@@ -153,7 +153,7 @@ export default async function MyGiftAidPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-900">£{d.amount.toFixed(2)}</p>
-                    <p className="text-xs text-green-600">+£{(d.amount * 0.25).toFixed(2)} Gift Aid</p>
+                    <p className="text-xs text-green-600">+£{(Number(d.amount) * 0.25).toFixed(2)} Gift Aid</p>
                     {d.giftAidClaimed ? (
                       <Badge className="bg-green-100 text-green-800 text-xs">Claimed</Badge>
                     ) : (

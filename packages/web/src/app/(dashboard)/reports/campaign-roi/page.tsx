@@ -208,7 +208,7 @@ export default function CampaignROIPage() {
                             </Badge>
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-600">
-                            £{campaign.budgetTarget.toLocaleString("en-GB", {
+                            £{Number(campaign.budgetTarget).toLocaleString("en-GB", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}

@@ -208,7 +208,7 @@ export default async function LegacyDetailPage({
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Estimated Amount</p>
                 <p className="text-lg font-bold text-gray-900 mt-1">
                   {legacy.estimatedAmount
-                    ? `£${legacy.estimatedAmount.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`
+                    ? `£${Number(legacy.estimatedAmount).toLocaleString("en-GB", { maximumFractionDigits: 0 })}`
                     : "—"}
                 </p>
               </div>
@@ -216,7 +216,7 @@ export default async function LegacyDetailPage({
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Received Amount</p>
                 <p className="text-sm text-gray-900 mt-1">
                   {legacy.receivedAmount
-                    ? `£${legacy.receivedAmount.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`
+                    ? `£${Number(legacy.receivedAmount).toLocaleString("en-GB", { maximumFractionDigits: 0 })}`
                     : "—"}
                 </p>
               </div>

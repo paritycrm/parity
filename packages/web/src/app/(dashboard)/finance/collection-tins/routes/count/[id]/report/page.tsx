@@ -37,18 +37,18 @@ export default async function RunReportPage({
   // Compute stats
   const completedRunStops = run.runStops.filter((s) => s.status === "COMPLETED");
   const skippedRunStops = run.runStops.filter((s) => s.status === "SKIPPED");
-  const amounts = run.tinReturns.map((r) => r.amount);
+  const amounts = run.tinReturns.map((r) => Number(r.amount));
   const totalCollected = amounts.reduce((a, b) => a + b, 0);
   const avgPerTin = amounts.length > 0 ? totalCollected / amounts.length : 0;
   const highestTin = run.tinReturns.reduce(
     (best, r) =>
-      r.amount > (best?.amount || 0) ? r : best,
+      Number(r.amount) > Number(best?.amount || 0) ? r : best,
     null as (typeof run.tinReturns)[0] | null
   );
   const lowestTin =
     amounts.length > 0
       ? run.tinReturns.reduce(
-          (worst, r) => (r.amount < worst.amount ? r : worst),
+          (worst, r) => (Number(r.amount) < Number(worst.amount) ? r : worst),
           run.tinReturns[0]
         )
       : null;
@@ -69,7 +69,7 @@ export default async function RunReportPage({
     const tinReturn = run.tinReturns.find(
       (r) => r.tinId === runStop.collectedTin?.id
     );
-    if (tinReturn) typeBreakdown[locType].total += tinReturn.amount;
+    if (tinReturn) typeBreakdown[locType].total += Number(tinReturn.amount);
   }
 
   // Amount distribution for chart
@@ -85,13 +85,13 @@ export default async function RunReportPage({
 
   // Top 5 earners
   const topEarners = [...run.tinReturns]
-    .sort((a, b) => b.amount - a.amount)
+    .sort((a, b) => Number(b.amount) - Number(a.amount))
     .slice(0, 5)
     .map((r) => {
       const runStop = completedRunStops.find((s) => s.collectedTin?.id === r.tinId);
       return {
         tinNumber: r.tin.tinNumber,
-        amount: r.amount,
+        amount: Number(r.amount),
         location: runStop?.routeStop.location.name || r.tin.locationName,
         type: runStop?.routeStop.location.type || "OTHER",
       };
@@ -111,9 +111,9 @@ export default async function RunReportPage({
     totalTinsCounted: amounts.length,
     totalCollected,
     avgPerTin: Math.round(avgPerTin * 100) / 100,
-    highestAmount: highestTin?.amount || 0,
+    highestAmount: Number(highestTin?.amount || 0),
     highestTinNumber: highestTin?.tin.tinNumber || "",
-    lowestAmount: lowestTin?.amount || 0,
+    lowestAmount: Number(lowestTin?.amount || 0),
     lowestTinNumber: lowestTin?.tin.tinNumber || "",
     durationHours: durationHours ? Math.round(durationHours * 10) / 10 : null,
     typeBreakdown: Object.entries(typeBreakdown).map(([type, data]) => ({

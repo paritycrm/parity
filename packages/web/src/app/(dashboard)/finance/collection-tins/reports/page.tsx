@@ -37,7 +37,7 @@ export default async function CollectionTinsReportsPage() {
     .map((loc) => {
       const allMovements = loc.tins.flatMap((t) => t.movements);
       const totalCollected = allMovements.reduce(
-        (s, m) => s + (m.amount || 0),
+        (s, m) => s + Number(m.amount || 0),
         0
       );
       const collectionCount = allMovements.length;
@@ -69,7 +69,7 @@ export default async function CollectionTinsReportsPage() {
     0
   );
   const unlinkedTotal = unlinkedTins.reduce(
-    (s, t) => s + t.movements.reduce((ss, m) => ss + (m.amount || 0), 0),
+    (s, t) => s + t.movements.reduce((ss, m) => ss + Number(m.amount || 0), 0),
     0
   );
   const totalCollections = locationStats.reduce(
@@ -90,7 +90,7 @@ export default async function CollectionTinsReportsPage() {
   allMovements.forEach((m) => {
     const d = new Date(m.date);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    monthlyData[key] = (monthlyData[key] || 0) + (m.amount || 0);
+    monthlyData[key] = (monthlyData[key] || 0) + Number(m.amount || 0);
   });
 
   const sortedMonths = Object.entries(monthlyData)

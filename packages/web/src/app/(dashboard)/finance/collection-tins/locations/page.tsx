@@ -57,7 +57,7 @@ export default async function TinLocationsPage({
   const locationsWithStats = locations.map((loc) => {
     const totalCollected = loc.tins.reduce(
       (sum, tin) =>
-        sum + tin.movements.reduce((s, m) => s + (m.amount || 0), 0),
+        sum + tin.movements.reduce((s, m) => s + Number(m.amount || 0), 0),
       0
     );
     const collectionCount = loc.tins.reduce(

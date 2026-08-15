@@ -95,9 +95,9 @@ export default async function EventFinancePage({
 
   if (!event) notFound();
 
-  const totalIncome = event.incomeLines.reduce((s, l) => s + l.actual, 0);
-  const totalCosts = event.costLines.reduce((s, l) => s + l.actual, 0);
-  const estimatedCosts = event.costLines.reduce((s, l) => s + l.estimated, 0);
+  const totalIncome = event.incomeLines.reduce((s, l) => s + Number(l.actual), 0);
+  const totalCosts = event.costLines.reduce((s, l) => s + Number(l.actual), 0);
+  const estimatedCosts = event.costLines.reduce((s, l) => s + Number(l.estimated), 0);
   const profit = totalIncome - totalCosts;
 
   const finance = event.finance;
@@ -137,11 +137,11 @@ export default async function EventFinancePage({
             totalIncome={totalIncome}
             totalCosts={totalCosts}
             profit={profit}
-            incomeTarget={finance?.incomeTarget || 0}
-            costTarget={finance?.costTarget || 0}
-            profitTarget={finance?.profitTarget || 0}
+            incomeTarget={Number(finance?.incomeTarget || 0)}
+            costTarget={Number(finance?.costTarget || 0)}
+            profitTarget={Number(finance?.profitTarget || 0)}
             estimatedCosts={estimatedCosts}
-            finalTakings={finance?.finalTakings ?? null}
+            finalTakings={finance?.finalTakings != null ? Number(finance.finalTakings) : null}
             isCompleted={isCompleted}
           />
         </CardContent>
@@ -325,7 +325,7 @@ export default async function EventFinancePage({
                       <p className="text-sm font-medium text-gray-900">{line.label}</p>
                       <p className="text-xs text-gray-500">
                         {COST_CATEGORIES.find((c) => c.value === line.category)?.label || line.category}
-                        {line.estimated > 0 && ` · Est: £${line.estimated.toFixed(2)}`}
+                        {Number(line.estimated) > 0 && ` · Est: £${Number(line.estimated).toFixed(2)}`}
                         {line.organisation && (
                           <> · <Link href={`/crm/organisations`} className="text-indigo-600 hover:text-indigo-700 font-medium">{line.organisation.name}</Link></>
                         )}
@@ -415,8 +415,8 @@ export default async function EventFinancePage({
               <CheckCircle2 className="h-5 w-5" /> Event Completed
             </h2>
             <div className="mt-3 space-y-2 text-sm">
-              {finance.finalTakings != null && finance.finalTakings > 0 && (
-                <p><span className="font-medium text-gray-700">Additional Income at Completion:</span> £{finance.finalTakings.toFixed(2)}</p>
+              {finance.finalTakings != null && Number(finance.finalTakings) > 0 && (
+                <p><span className="font-medium text-gray-700">Additional Income at Completion:</span> £{Number(finance.finalTakings).toFixed(2)}</p>
               )}
               {finance.notes && (
                 <p><span className="font-medium text-gray-700">Notes:</span> {finance.notes}</p>

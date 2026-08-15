@@ -56,8 +56,8 @@ export default async function SubscriptionDetailPage({
     // Build changes object tracking old vs new values
     const changes: Record<string, { old: any; new: any }> = {};
 
-    if (existing.amount !== newAmount) {
-      changes.amount = { old: existing.amount, new: newAmount };
+    if (Number(existing.amount) !== newAmount) {
+      changes.amount = { old: Number(existing.amount), new: newAmount };
     }
     if (existing.status !== newStatus) {
       changes.status = { old: existing.status, new: newStatus };

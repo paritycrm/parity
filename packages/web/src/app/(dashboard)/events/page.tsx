@@ -336,11 +336,11 @@ export default async function EventsPage({
         <>
           <div className="space-y-3">
             {events.map((event) => {
-              const evtIncome = event.incomeLines.reduce((s, l) => s + l.actual, 0);
-              const evtCosts = event.costLines.reduce((s, l) => s + l.actual, 0);
+              const evtIncome = event.incomeLines.reduce((s, l) => s + Number(l.actual), 0);
+              const evtCosts = event.costLines.reduce((s, l) => s + Number(l.actual), 0);
               const evtProfit = evtIncome - evtCosts;
-              const evtIncomeTarget = event.finance?.incomeTarget || 0;
-              const evtCostTarget = event.finance?.costTarget || 0;
+              const evtIncomeTarget = Number(event.finance?.incomeTarget || 0);
+              const evtCostTarget = Number(event.finance?.costTarget || 0);
 
               return (
                 <Card key={event.id} className="p-4 hover:bg-gray-50 transition-colors">

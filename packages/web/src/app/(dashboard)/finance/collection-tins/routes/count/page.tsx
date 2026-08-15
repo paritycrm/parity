@@ -47,7 +47,7 @@ export default async function CountTinsPage() {
     const countedTinIds = new Set(run.tinReturns.map((r) => r.tinId));
     const uncountedTins = collectedTins.filter((t) => !countedTinIds.has(t.id));
     const countedTins = collectedTins.filter((t) => countedTinIds.has(t.id));
-    const totalCounted = run.tinReturns.reduce((sum, r) => sum + r.amount, 0);
+    const totalCounted = run.tinReturns.reduce((sum, r) => sum + Number(r.amount), 0);
 
     return {
       ...run,

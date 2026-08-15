@@ -86,8 +86,8 @@ export default async function GrantsPage({
   const pipelineGrants = grants.filter((g) =>
     ["IDENTIFIED", "RESEARCHING", "APPLYING", "SUBMITTED"].includes(g.status)
   );
-  const pipelineValue = pipelineGrants.reduce((sum, g) => sum + (g.amountRequested || 0), 0);
-  const totalAwarded = awardedGrants.reduce((sum, g) => sum + (g.amountAwarded || 0), 0);
+  const pipelineValue = pipelineGrants.reduce((sum, g) => sum + Number(g.amountRequested || 0), 0);
+  const totalAwarded = awardedGrants.reduce((sum, g) => sum + Number(g.amountAwarded || 0), 0);
 
   // Year-over-year comparison
   const thisYearGrants = allGrants.filter(
@@ -98,10 +98,10 @@ export default async function GrantsPage({
   );
   const thisYearTotal = thisYearGrants
     .filter((g) => ["SUCCESSFUL", "REPORTING", "COMPLETED"].includes(g.status))
-    .reduce((sum, g) => sum + (g.amountAwarded || 0), 0);
+    .reduce((sum, g) => sum + Number(g.amountAwarded || 0), 0);
   const lastYearTotal = lastYearGrants
     .filter((g) => ["SUCCESSFUL", "REPORTING", "COMPLETED"].includes(g.status))
-    .reduce((sum, g) => sum + (g.amountAwarded || 0), 0);
+    .reduce((sum, g) => sum + Number(g.amountAwarded || 0), 0);
   const yoyChange = lastYearTotal > 0
     ? (((thisYearTotal - lastYearTotal) / lastYearTotal) * 100).toFixed(0)
     : null;
@@ -314,9 +314,9 @@ export default async function GrantsPage({
                     </td>
                     <td className="px-6 py-4 font-medium text-gray-900">
                       {grant.amountAwarded
-                        ? fmt(grant.amountAwarded)
+                        ? fmt(Number(grant.amountAwarded))
                         : grant.amountRequested
-                          ? `${fmt(grant.amountRequested)}`
+                          ? `${fmt(Number(grant.amountRequested))}`
                           : "—"}
                     </td>
                     <td className="px-6 py-4">

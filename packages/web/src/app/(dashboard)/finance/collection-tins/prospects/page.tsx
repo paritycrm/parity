@@ -59,7 +59,7 @@ export default async function ProspectsPage() {
       typeAgg[loc.type].tins++;
       for (const mov of tin.movements) {
         if (mov.amount) {
-          typeAgg[loc.type].raised += mov.amount;
+          typeAgg[loc.type].raised += Number(mov.amount);
           typeAgg[loc.type].collections++;
         }
       }

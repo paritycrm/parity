@@ -370,7 +370,7 @@ export default async function ContactDetailPage({
   // -- Computed values --
 
   const lifetimeDonationTotal = contact.donations.reduce((sum, d) => sum + Number(d.amount), 0);
-  const isGoldDonor = lifetimeDonationTotal >= systemSettings.goldDonorThreshold;
+  const isGoldDonor = lifetimeDonationTotal >= Number(systemSettings.goldDonorThreshold);
 
   const typeColors: Record<string, string> = {
     DONOR: "bg-green-100 text-green-800",
@@ -618,7 +618,7 @@ export default async function ContactDetailPage({
                           {d.campaign && <span className="text-indigo-600"> &middot; {d.campaign.name}</span>}
                         </p>
                       </div>
-                      <span className="text-sm font-semibold text-gray-900">&pound;{d.amount.toFixed(2)}</span>
+                      <span className="text-sm font-semibold text-gray-900">&pound;{Number(d.amount).toFixed(2)}</span>
                     </Link>
                   ))}
                 </div>
@@ -709,7 +709,7 @@ export default async function ContactDetailPage({
                           <p className="text-xs text-gray-500 font-mono">{order.orderNumber}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-gray-900">&pound;{order.totalAmount.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-gray-900">&pound;{Number(order.totalAmount).toFixed(2)}</p>
                           <Badge className={
                             order.paymentStatus === "PAID" || order.paymentStatus === "FREE" ? "bg-green-100 text-green-800" :
                             order.paymentStatus === "UNPAID" ? "bg-yellow-100 text-yellow-800" :
@@ -726,9 +726,9 @@ export default async function ContactDetailPage({
                           ))}
                         </div>
                       )}
-                      {order.giftAidDeclared && order.giftAidTotal > 0 && (
+                      {order.giftAidDeclared && Number(order.giftAidTotal) > 0 && (
                         <p className="text-xs text-amber-700 mt-1">
-                          Gift Aid: &pound;{(order.giftAidTotal * 0.25).toFixed(2)} claimable
+                          Gift Aid: &pound;{(Number(order.giftAidTotal) * 0.25).toFixed(2)} claimable
                         </p>
                       )}
                     </div>
@@ -771,20 +771,20 @@ export default async function ContactDetailPage({
                       )}
                       <div className="flex items-center gap-4 mt-2">
                         <div>
-                          <p className="text-xl font-bold text-purple-700">&pound;{fp.totalRaised.toFixed(2)}</p>
+                          <p className="text-xl font-bold text-purple-700">&pound;{Number(fp.totalRaised).toFixed(2)}</p>
                           <p className="text-xs text-gray-500">raised</p>
                         </div>
-                        {fp.targetAmount && fp.targetAmount > 0 && (
+                        {fp.targetAmount && Number(fp.targetAmount) > 0 && (
                           <div>
-                            <p className="text-sm font-medium text-gray-700">of &pound;{fp.targetAmount.toFixed(2)}</p>
+                            <p className="text-sm font-medium text-gray-700">of &pound;{Number(fp.targetAmount).toFixed(2)}</p>
                             <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
-                              <div className="h-2 bg-purple-600 rounded-full" style={{ width: `${Math.min(100, (fp.totalRaised / fp.targetAmount) * 100)}%` }} />
+                              <div className="h-2 bg-purple-600 rounded-full" style={{ width: `${Math.min(100, (Number(fp.totalRaised) / Number(fp.targetAmount)) * 100)}%` }} />
                             </div>
                           </div>
                         )}
-                        {fp.giftAidTotal > 0 && (
+                        {Number(fp.giftAidTotal) > 0 && (
                           <div>
-                            <p className="text-sm font-medium text-amber-700">+&pound;{fp.giftAidTotal.toFixed(2)}</p>
+                            <p className="text-sm font-medium text-amber-700">+&pound;{Number(fp.giftAidTotal).toFixed(2)}</p>
                             <p className="text-xs text-gray-500">gift aid</p>
                           </div>
                         )}
@@ -812,7 +812,7 @@ export default async function ContactDetailPage({
                               <span className="text-gray-700">{d.donorDisplayName || "Anonymous"}</span>
                               <span className="text-gray-400">{formatDate(d.donationDate)}</span>
                             </div>
-                            <span className="font-bold text-purple-700">&pound;{d.amount.toFixed(2)}</span>
+                            <span className="font-bold text-purple-700">&pound;{Number(d.amount).toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
@@ -923,7 +923,7 @@ export default async function ContactDetailPage({
                         </Badge>
                       </td>
                       <td className="py-3 px-2 text-right font-semibold text-gray-900">
-                        &pound;{d.amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        &pound;{Number(d.amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="py-3 px-2 text-gray-600">{d.method || "—"}</td>
                       <td className="py-3 px-2">

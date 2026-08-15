@@ -48,9 +48,9 @@ export default async function EventDetailPage({
   if (!event) notFound();
 
   // P&L calculations
-  const totalIncome = event.incomeLines.reduce((s, l) => s + l.actual, 0);
-  const totalCosts = event.costLines.reduce((s, l) => s + l.actual, 0);
-  const estimatedCosts = event.costLines.reduce((s, l) => s + l.estimated, 0);
+  const totalIncome = event.incomeLines.reduce((s, l) => s + Number(l.actual), 0);
+  const totalCosts = event.costLines.reduce((s, l) => s + Number(l.actual), 0);
+  const estimatedCosts = event.costLines.reduce((s, l) => s + Number(l.estimated), 0);
   const profit = totalIncome - totalCosts;
   const finance = event.finance;
   const isCompleted = event.status === "COMPLETED" && !!finance?.completedAt;
@@ -224,11 +224,11 @@ export default async function EventDetailPage({
             totalIncome={totalIncome}
             totalCosts={totalCosts}
             profit={profit}
-            incomeTarget={finance?.incomeTarget || 0}
-            costTarget={finance?.costTarget || 0}
-            profitTarget={finance?.profitTarget || 0}
+            incomeTarget={Number(finance?.incomeTarget || 0)}
+            costTarget={Number(finance?.costTarget || 0)}
+            profitTarget={Number(finance?.profitTarget || 0)}
             estimatedCosts={estimatedCosts}
-            finalTakings={finance?.finalTakings ?? null}
+            finalTakings={finance?.finalTakings != null ? Number(finance.finalTakings) : null}
             isCompleted={isCompleted}
           />
         </CardContent>
@@ -267,9 +267,9 @@ export default async function EventDetailPage({
                     </a>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-purple-700">£{fp.totalRaised.toFixed(2)}</p>
-                    {fp.giftAidTotal > 0 && (
-                      <p className="text-xs text-amber-700">+£{fp.giftAidTotal.toFixed(2)} gift aid</p>
+                    <p className="text-lg font-bold text-purple-700">£{Number(fp.totalRaised).toFixed(2)}</p>
+                    {Number(fp.giftAidTotal) > 0 && (
+                      <p className="text-xs text-amber-700">+£{Number(fp.giftAidTotal).toFixed(2)} gift aid</p>
                     )}
                   </div>
                 </div>
@@ -303,7 +303,7 @@ export default async function EventDetailPage({
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    {sponsor.amount && <span className="font-medium text-green-600">£{sponsor.amount.toFixed(2)}</span>}
+                    {sponsor.amount && <span className="font-medium text-green-600">£{Number(sponsor.amount).toFixed(2)}</span>}
                     <form action={removeSponsor}>
                       <input type="hidden" name="sponsorId" value={sponsor.id} />
                       <input type="hidden" name="eventId" value={event.id} />
@@ -394,7 +394,7 @@ export default async function EventDetailPage({
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-gray-900">
-                      £{donation.amount.toFixed(2)}
+                      £{Number(donation.amount).toFixed(2)}
                     </p>
                   </div>
                 </Link>

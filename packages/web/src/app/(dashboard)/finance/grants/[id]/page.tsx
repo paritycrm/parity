@@ -544,7 +544,7 @@ export default async function GrantDetailPage({
                         <p className="text-xs font-medium text-gray-500 uppercase">Awarded</p>
                         <p className="text-xl font-bold text-gray-900 mt-1">
                           {grant.amountAwarded
-                            ? `£${grant.amountAwarded.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`
+                            ? `£${Number(grant.amountAwarded).toLocaleString("en-GB", { maximumFractionDigits: 0 })}`
                             : "—"}
                         </p>
                       </div>
@@ -552,7 +552,7 @@ export default async function GrantDetailPage({
                         <p className="text-xs font-medium text-gray-500 uppercase">Requested</p>
                         <p className="text-sm text-gray-900 mt-1">
                           {grant.amountRequested
-                            ? `£${grant.amountRequested.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`
+                            ? `£${Number(grant.amountRequested).toLocaleString("en-GB", { maximumFractionDigits: 0 })}`
                             : "—"}
                         </p>
                       </div>
@@ -787,7 +787,7 @@ export default async function GrantDetailPage({
                   grantId={grant.id}
                   isSplitPayment={grant.isSplitPayment}
                   splitPeriodType={grant.splitPeriodType}
-                  amountAwarded={grant.amountAwarded}
+                  amountAwarded={grant.amountAwarded ? Number(grant.amountAwarded) : null}
                   toggleSplitAction={toggleSplit}
                   addInstalmentAction={addInstalment}
                   markReceivedAction={markReceived}

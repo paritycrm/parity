@@ -201,7 +201,7 @@ export default async function GiftAidClaimDetailPage({
             <p className="text-xs font-medium text-gray-500 uppercase">Included Donations</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{includedItems.length}</p>
             <p className="text-xs text-gray-500">
-              {formatCurrency(claim.totalDonations)} total
+              {formatCurrency(Number(claim.totalDonations))} total
             </p>
           </CardContent>
         </Card>
@@ -209,7 +209,7 @@ export default async function GiftAidClaimDetailPage({
           <CardContent className="pt-4 pb-4">
             <p className="text-xs font-medium text-gray-500 uppercase">Gift Aid Claimable</p>
             <p className="text-2xl font-bold text-indigo-600 mt-1">
-              {formatCurrency(claim.totalClaimable)}
+              {formatCurrency(Number(claim.totalClaimable))}
             </p>
             <p className="text-xs text-gray-500">25% of included donations</p>
           </CardContent>
@@ -231,7 +231,7 @@ export default async function GiftAidClaimDetailPage({
             {claim.status === "ACCEPTED" && (
               <>
                 <p className="text-2xl font-bold text-green-600 mt-1">
-                  {claim.amountReceived ? formatCurrency(claim.amountReceived) : "—"}
+                  {claim.amountReceived ? formatCurrency(Number(claim.amountReceived)) : "—"}
                 </p>
                 <p className="text-xs text-gray-500">
                   {claim.receivedAt ? `Received ${formatDate(claim.receivedAt)}` : ""}
@@ -664,11 +664,11 @@ export default async function GiftAidClaimDetailPage({
                         {formatDate(item.donationDate)}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                        {formatCurrency(item.donationAmount)}
+                        {formatCurrency(Number(item.donationAmount))}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-indigo-600 text-right">
                         {item.status === "INCLUDED"
-                          ? formatCurrency(item.giftAidAmount)
+                          ? formatCurrency(Number(item.giftAidAmount))
                           : "—"}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -697,7 +697,7 @@ export default async function GiftAidClaimDetailPage({
                       Totals ({includedItems.length} included)
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-indigo-600">
-                      {formatCurrency(claim.totalClaimable)}
+                      {formatCurrency(Number(claim.totalClaimable))}
                     </td>
                     <td></td>
                   </tr>

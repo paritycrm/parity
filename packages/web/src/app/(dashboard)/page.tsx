@@ -304,8 +304,8 @@ export default async function DashboardPage({
   donationsInRange.forEach((d) => {
     const label = getMonthLabel(new Date(d.date));
     if (monthlyMap[label]) {
-      monthlyMap[label].total += d.amount;
-      if (d.isGiftAidable) monthlyMap[label].giftAid += d.amount * 0.25;
+      monthlyMap[label].total += Number(d.amount);
+      if (d.isGiftAidable) monthlyMap[label].giftAid += Number(d.amount) * 0.25;
       monthlyMap[label].count += 1;
     }
   });
@@ -328,7 +328,7 @@ export default async function DashboardPage({
   };
   const donationTypeData = donationsByType.map((d) => ({
     name: typeLabels[d.type] || d.type,
-    value: d._sum.amount || 0,
+    value: Number(d._sum.amount || 0),
   }));
 
   const hoursMap: Record<string, number> = {};
@@ -346,11 +346,11 @@ export default async function DashboardPage({
 
   // ── Computed values ───────────────────────────────────────
 
-  const totalDonationsAmount = totalDonationsThisYear._sum.amount || 0;
+  const totalDonationsAmount = Number(totalDonationsThisYear._sum.amount || 0);
   const totalDonationsCount = totalDonationsThisYear._count || 0;
-  const unclaimedGiftAid = (giftAidableUnclaimed._sum.amount || 0) * 0.25;
-  const totalVolunteerHours = filteredVolunteerHours._sum.hours || 0;
-  const tinCollections = filteredTinCollections._sum.amount || 0;
+  const unclaimedGiftAid = Number(giftAidableUnclaimed._sum.amount || 0) * 0.25;
+  const totalVolunteerHours = Number(filteredVolunteerHours._sum.hours || 0);
+  const tinCollections = Number(filteredTinCollections._sum.amount || 0);
   const activeContactCount = await prisma.contact.count({ where: { status: "ACTIVE" } });
   const phonePct = activeContactCount > 0 ? Math.round((contactsWithPhone / activeContactCount) * 100) : 0;
   const emailPct = activeContactCount > 0 ? Math.round((contactsWithEmail / activeContactCount) * 100) : 0;
@@ -536,9 +536,9 @@ export default async function DashboardPage({
               <div className="space-y-3">
                 {activeCampaigns.map((campaign) => {
                   const progress =
-                    campaign.budgetTarget && campaign.budgetTarget > 0
+                    campaign.budgetTarget && Number(campaign.budgetTarget) > 0
                       ? Math.min(
-                          (campaign.actualRaised / campaign.budgetTarget) * 100,
+                          (Number(campaign.actualRaised) / Number(campaign.budgetTarget)) * 100,
                           100
                         )
                       : 0;
@@ -554,16 +554,16 @@ export default async function DashboardPage({
                         </p>
                         {campaign.budgetTarget ? (
                           <span className="text-xs text-gray-500">
-                            £{campaign.actualRaised.toFixed(0)} / £
-                            {campaign.budgetTarget.toFixed(0)}
+                            £{Number(campaign.actualRaised).toFixed(0)} / £
+                            {Number(campaign.budgetTarget).toFixed(0)}
                           </span>
                         ) : (
                           <span className="text-xs text-gray-500">
-                            £{campaign.actualRaised.toFixed(0)}
+                            £{Number(campaign.actualRaised).toFixed(0)}
                           </span>
                         )}
                       </div>
-                      {campaign.budgetTarget && campaign.budgetTarget > 0 && (
+                      {campaign.budgetTarget && Number(campaign.budgetTarget) > 0 && (
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-indigo-600 h-2 rounded-full transition-all"
@@ -639,7 +639,7 @@ export default async function DashboardPage({
                       <p className="text-xs text-gray-500">{formatDate(donation.date)} · {donation.type.replace("_", " ")}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-green-600">£{donation.amount.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-green-600">£{Number(donation.amount).toFixed(2)}</p>
                       {donation.isGiftAidable && <span className="text-xs text-amber-600">+Gift Aid</span>}
                     </div>
                   </Link>

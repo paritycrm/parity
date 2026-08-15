@@ -101,7 +101,7 @@ export default async function RetailGiftAidPage() {
           <CardContent className="p-6">
             <p className="text-sm text-gray-500 uppercase tracking-wide">Total Proceeds</p>
             <p className="text-3xl font-bold text-purple-600 mt-1">
-              {formatCurrency(stats._sum.amount || 0)}
+              {formatCurrency(Number(stats._sum.amount || 0))}
             </p>
           </CardContent>
         </Card>
@@ -109,7 +109,7 @@ export default async function RetailGiftAidPage() {
           <CardContent className="p-6">
             <p className="text-sm text-gray-500 uppercase tracking-wide">Potential Gift Aid (25%)</p>
             <p className="text-3xl font-bold text-green-600 mt-1">
-              {formatCurrency((stats._sum.amount || 0) * 0.25)}
+              {formatCurrency(Number(stats._sum.amount || 0) * 0.25)}
             </p>
           </CardContent>
         </Card>
@@ -232,7 +232,7 @@ export default async function RetailGiftAidPage() {
                       </td>
                       <td className="py-3 pr-4">{claim.donationCount}</td>
                       <td className="py-3 pr-4 font-medium text-green-600">
-                        {formatCurrency(claim.totalClaimable)}
+                        {formatCurrency(Number(claim.totalClaimable))}
                       </td>
                       <td className="py-3">
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[claim.status] || "bg-gray-100 text-gray-700"}`}>

@@ -93,8 +93,8 @@ export default async function LegaciesPage({
   const financialYears = Array.from(fySet).sort((a, b) => b - a);
 
   // Current filtered view stats
-  const totalEstimated = legacies.reduce((sum, l) => sum + (l.estimatedAmount || 0), 0);
-  const totalReceived = legacies.reduce((sum, l) => sum + (l.receivedAmount || 0), 0);
+  const totalEstimated = legacies.reduce((sum, l) => sum + Number(l.estimatedAmount || 0), 0);
+  const totalReceived = legacies.reduce((sum, l) => sum + Number(l.receivedAmount || 0), 0);
   const inAdministration = legacies.filter((l) =>
     ["INVESTIGATING", "PROBATE", "AWAITING_PAYMENT"].includes(l.status)
   ).length;
@@ -103,7 +103,7 @@ export default async function LegaciesPage({
   // Pipeline value (legacies not yet received)
   const pipelineValue = allLegacies
     .filter((l) => ["NOTIFIED", "INVESTIGATING", "PROBATE", "AWAITING_PAYMENT"].includes(l.status))
-    .reduce((s, l) => s + (l.estimatedAmount || 0), 0);
+    .reduce((s, l) => s + Number(l.estimatedAmount || 0), 0);
 
   // Average time to receipt
   const completedLegacies = allLegacies.filter((l) => l.dateReceived && l.status === "RECEIVED");
@@ -128,9 +128,9 @@ export default async function LegaciesPage({
     );
     return {
       notified: fyLegacies.length,
-      estimatedValue: fyLegacies.reduce((s, l) => s + (l.estimatedAmount || 0), 0),
+      estimatedValue: fyLegacies.reduce((s, l) => s + Number(l.estimatedAmount || 0), 0),
       receivedCount: received.length,
-      receivedValue: received.reduce((s, l) => s + (l.receivedAmount || 0), 0),
+      receivedValue: received.reduce((s, l) => s + Number(l.receivedAmount || 0), 0),
     };
   };
 
@@ -207,7 +207,7 @@ export default async function LegaciesPage({
       (fm) => fm.month === expectedDate.getMonth() && fm.year === expectedDate.getFullYear()
     );
     if (idx >= 0) {
-      forecastMonths[idx].estimated += l.estimatedAmount || 0;
+      forecastMonths[idx].estimated += Number(l.estimatedAmount || 0);
       forecastMonths[idx].count += 1;
     }
   });
@@ -421,11 +421,11 @@ export default async function LegaciesPage({
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">
-                        {legacy.estimatedAmount ? fmt(legacy.estimatedAmount) : "—"}
+                        {legacy.estimatedAmount ? fmt(Number(legacy.estimatedAmount)) : "—"}
                       </div>
                       {legacy.receivedAmount ? (
                         <div className="text-xs text-green-600">
-                          Received: {fmt(legacy.receivedAmount)}
+                          Received: {fmt(Number(legacy.receivedAmount))}
                         </div>
                       ) : null}
                     </td>

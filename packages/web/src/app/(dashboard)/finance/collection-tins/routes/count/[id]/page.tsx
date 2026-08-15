@@ -46,7 +46,7 @@ export default async function CountRunSessionPage({
   const countedTinIds = new Set(run.tinReturns.map((r) => r.tinId));
   const uncounted = collectedTins.filter((t) => !countedTinIds.has(t.tin.id));
   const counted = collectedTins.filter((t) => countedTinIds.has(t.tin.id));
-  const totalCounted = run.tinReturns.reduce((sum, r) => sum + r.amount, 0);
+  const totalCounted = run.tinReturns.reduce((sum, r) => sum + Number(r.amount), 0);
 
   const allDone = uncounted.length === 0 && collectedTins.length > 0;
 

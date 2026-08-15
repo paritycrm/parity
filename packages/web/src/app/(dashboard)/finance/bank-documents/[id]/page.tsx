@@ -89,7 +89,7 @@ export default async function BankDocumentDetailPage({
     if (seenContactIds.has(d.contact.id)) {
       // Add to existing total
       const existing = contactsWithoutGA.find((c) => c.id === d.contact.id);
-      if (existing) existing.totalDonated += d.amount;
+      if (existing) existing.totalDonated += Number(d.amount);
       continue;
     }
     seenContactIds.add(d.contact.id);
@@ -99,7 +99,7 @@ export default async function BankDocumentDetailPage({
       donorId: d.contact.donorId,
       email: d.contact.email || "",
       canEmail: !!(d.contact.email && d.contact.consentEmail),
-      totalDonated: d.amount,
+      totalDonated: Number(d.amount),
     });
   }
 

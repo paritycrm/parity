@@ -48,7 +48,7 @@ export default async function CollectionTinDetailPage({
 
   const totalCollected = tin.movements
     .filter((m) => m.type === "COUNTED" && m.amount)
-    .reduce((s, m) => s + (m.amount || 0), 0);
+    .reduce((s, m) => s + Number(m.amount || 0), 0);
   const collectionCount = tin.movements.filter(
     (m) => m.type === "COUNTED" && m.amount
   ).length;
@@ -710,7 +710,7 @@ export default async function CollectionTinDetailPage({
                   </div>
                   {movement.amount != null && (
                     <p className="text-sm font-bold text-green-600">
-                      £{movement.amount.toFixed(2)}
+                      £{Number(movement.amount).toFixed(2)}
                     </p>
                   )}
                 </div>
