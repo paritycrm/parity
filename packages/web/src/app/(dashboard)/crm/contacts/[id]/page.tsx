@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
-import { ArrowLeft, Mail, Phone, MapPin, Building2, Plus, Heart, Users, Edit3, Trash2, Archive, ArchiveX, Ticket, PoundSterling, Calendar, Tag, Crown, Package } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Building2, Plus, Heart, Users, Edit3, Trash2, Archive, ArchiveX, Ticket, PoundSterling, Calendar, Tag, Crown, Package, Award, Clock, Shield, BookOpen } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
@@ -33,7 +33,16 @@ export default async function ContactDetailPage({
       tags: { include: { tag: true } },
       notes: { include: { createdBy: true }, orderBy: { createdAt: "desc" } },
       interactions: { include: { createdBy: true }, orderBy: { date: "desc" } },
-      volunteerProfile: true,
+      volunteerProfile: {
+        include: {
+          departments: { include: { department: true } },
+          skills: { include: { skill: true } },
+          hoursLogs: { orderBy: { date: "desc" as const }, take: 5 },
+          assignments: { include: { department: true }, orderBy: { date: "desc" as const }, take: 5 },
+          trainings: { include: { course: true } },
+          dbsChecks: { orderBy: { createdAt: "desc" as const }, take: 1 },
+        },
+      },
       giftAids: { orderBy: { createdAt: "desc" }, take: 5 },
       donations: { include: { campaign: true, event: true }, orderBy: { date: "desc" } },
       eventAttendees: { include: { event: true }, orderBy: { createdAt: "desc" }, take: 5 },
@@ -1199,6 +1208,168 @@ export default async function ContactDetailPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* Volunteer Summary -- inline when profile exists */}
+      {contact.volunteerProfile && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Volunteer Profile</h3>
+                <Badge className={
+                  contact.volunteerProfile.status === "ACTIVE" ? "bg-green-100 text-green-800" :
+                  contact.volunteerProfile.status === "APPLICANT" ? "bg-blue-100 text-blue-800" :
+                  contact.volunteerProfile.status === "INACTIVE" ? "bg-gray-100 text-gray-800" :
+                  contact.volunteerProfile.status === "ON_LEAVE" ? "bg-amber-100 text-amber-800" :
+                  contact.volunteerProfile.status === "DEPARTED" ? "bg-red-100 text-red-800" :
+                  "bg-gray-100 text-gray-800"
+                }>{contact.volunteerProfile.status}</Badge>
+              </div>
+              <Link href={`/volunteers/${contact.volunteerProfile.id}`} className="text-sm text-indigo-600 hover:underline font-medium">
+                View Full Profile &rarr;
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Departments */}
+              {contact.volunteerProfile.departments.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Departments</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {contact.volunteerProfile.departments.map((vd: any) => (
+                      <Badge key={vd.department.id} variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                        {vd.department.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Skills */}
+              {contact.volunteerProfile.skills.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Award className="h-3.5 w-3.5 text-gray-400" />
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Skills</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {contact.volunteerProfile.skills.map((vs: any) => (
+                      <Badge key={vs.skill.id} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                        {vs.skill.name}
+                        {vs.proficiency && (
+                          <span className="ml-1 text-purple-400 font-normal">({vs.proficiency})</span>
+                        )}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Hours summary */}
+              {contact.volunteerProfile.hoursLogs.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Clock className="h-3.5 w-3.5 text-gray-400" />
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Volunteer Hours</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl font-bold text-gray-900">
+                      {contact.volunteerProfile.hoursLogs.reduce((sum: number, log: any) => sum + Number(log.hours), 0).toFixed(1)}
+                    </span>
+                    <span className="text-sm text-gray-500">total hours (recent {contact.volunteerProfile.hoursLogs.length} logs)</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Recent assignments */}
+              {contact.volunteerProfile.assignments.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Recent Assignments</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {contact.volunteerProfile.assignments.slice(0, 3).map((a: any) => (
+                      <div key={a.id} className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm font-medium text-gray-900 truncate">{a.title}</span>
+                          {a.department && (
+                            <Badge variant="outline" className="text-xs shrink-0">{a.department.name}</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-gray-500">{formatDate(a.date)}</span>
+                          <Badge className={
+                            a.status === "COMPLETED" ? "bg-green-100 text-green-800 text-xs" :
+                            a.status === "CONFIRMED" ? "bg-blue-100 text-blue-800 text-xs" :
+                            a.status === "CANCELLED" ? "bg-red-100 text-red-800 text-xs" :
+                            "bg-gray-100 text-gray-800 text-xs"
+                          }>{a.status}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Training */}
+              {contact.volunteerProfile.trainings.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <BookOpen className="h-3.5 w-3.5 text-gray-400" />
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Training</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {contact.volunteerProfile.trainings.map((t: any) => (
+                      <div key={t.id} className="flex items-center gap-1.5">
+                        <span className="text-sm text-gray-700">{t.course.name}</span>
+                        <Badge className={
+                          t.status === "COMPLETED" ? "bg-green-100 text-green-800 text-xs" :
+                          t.status === "IN_PROGRESS" ? "bg-blue-100 text-blue-800 text-xs" :
+                          t.status === "NOT_STARTED" ? "bg-gray-100 text-gray-800 text-xs" :
+                          t.status === "EXPIRED" ? "bg-red-100 text-red-800 text-xs" :
+                          "bg-gray-100 text-gray-800 text-xs"
+                        }>{t.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* DBS Check */}
+              {contact.volunteerProfile.dbsChecks.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Shield className="h-3.5 w-3.5 text-gray-400" />
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">DBS Check</p>
+                  </div>
+                  {(() => {
+                    const dbs = contact.volunteerProfile.dbsChecks[0];
+                    return (
+                      <div className="flex items-center gap-3">
+                        <Badge className={
+                          dbs.status === "CLEAR" ? "bg-green-100 text-green-800" :
+                          dbs.status === "PENDING" ? "bg-yellow-100 text-yellow-800" :
+                          dbs.status === "EXPIRED" ? "bg-red-100 text-red-800" :
+                          "bg-gray-100 text-gray-800"
+                        }>{dbs.status}</Badge>
+                        {dbs.expiryDate && (
+                          <span className="text-sm text-gray-500">Expires: {formatDate(dbs.expiryDate)}</span>
+                        )}
+                        {dbs.certificateNumber && (
+                          <span className="text-xs text-gray-400 font-mono">#{dbs.certificateNumber}</span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabbed content */}
       <ContactTabs

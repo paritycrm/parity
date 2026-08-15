@@ -168,6 +168,7 @@ model User {
   grantRequirementsCreated   GrantReportingRequirement[] @relation("GrantReqCreatedBy")
   grantReqAttachments        GrantRequirementAttachment[] @relation("GrantReqAttUploadedBy")
   grantRestrictionEvidence   GrantRestrictionEvidence[] @relation("GrantRestEvidenceUploadedBy")
+  feedbackTemplates          FeedbackTemplate[] @relation("FeedbackTemplateCreator")
 }
 
 model Department {
@@ -408,6 +409,7 @@ model VolunteerProfile {
   startDate           String?
   endDate             String?
   desiredHoursPerWeek Float?
+  motivation          String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -429,6 +431,7 @@ model VolunteerProfile {
   dbsChecks             DBSCheck[]
   drivingLicence        DrivingLicence?
   onboardingSteps       OnboardingStep[]
+  feedbackRequests      FeedbackRequest[]
 }
 
 model VolunteerDepartment {
@@ -560,6 +563,7 @@ model Assignment {
   department Department           @relation(fields: [departmentId], references: [id])
   createdBy  User                 @relation("AssignmentCreatedBy", fields: [createdById], references: [id])
   reminders  AssignmentReminder[]
+  feedbackRequests FeedbackRequest[] @relation("FeedbackRequestAssignment")
 
   @@index([volunteerId])
   @@index([status])
@@ -914,6 +918,7 @@ model Event {
   costLines        EventCostLine[]
   finance          EventFinance?
   sponsors         EventSponsor[]
+  feedbackRequests FeedbackRequest[] @relation("FeedbackRequestEvent")
 }
 
 // ============================================
@@ -3209,4 +3214,77 @@ model AutoTask {
   @@index([assignedToId])
   @@index([status])
   @@index([relatedContactId])
+}
+
+// ============================================
+// VOLUNTEER FEEDBACK
+// ============================================
+
+model FeedbackTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  questions   FeedbackQuestion[]
+  isActive    Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   User     @relation("FeedbackTemplateCreator", fields: [createdById], references: [id])
+  requests    FeedbackRequest[]
+}
+
+model FeedbackQuestion {
+  id          String   @id @default(cuid())
+  templateId  String
+  question    String
+  type        String   @default("TEXT") // TEXT | RATING | YES_NO | MULTI_CHOICE
+  options     String?  // JSON array for MULTI_CHOICE
+  isRequired  Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  template    FeedbackTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  answers     FeedbackAnswer[]
+
+  @@index([templateId])
+}
+
+model FeedbackRequest {
+  id            String    @id @default(cuid())
+  templateId    String
+  volunteerId   String
+  eventId       String?
+  assignmentId  String?
+  token         String    @unique @default(cuid())
+  status        String    @default("PENDING") // PENDING | COMPLETED | EXPIRED
+  sentAt        DateTime  @default(now())
+  completedAt   DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  template      FeedbackTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  volunteer     VolunteerProfile  @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  event         Event?            @relation("FeedbackRequestEvent", fields: [eventId], references: [id], onDelete: SetNull)
+  assignment    Assignment?       @relation("FeedbackRequestAssignment", fields: [assignmentId], references: [id], onDelete: SetNull)
+  answers       FeedbackAnswer[]
+
+  @@index([volunteerId])
+  @@index([eventId])
+  @@index([token])
+}
+
+model FeedbackAnswer {
+  id          String   @id @default(cuid())
+  requestId   String
+  questionId  String
+  answer      String
+  rating      Int?
+  createdAt   DateTime @default(now())
+
+  request     FeedbackRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  question    FeedbackQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([questionId])
 }

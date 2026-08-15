@@ -42,6 +42,7 @@ async function editBasicInfo(formData: FormData) {
   const desiredHoursPerWeek = formData.get("desiredHoursPerWeek") as string;
   const startDate = formData.get("startDate") as string;
   const endDate = formData.get("endDate") as string;
+  const motivation = formData.get("motivation") as string;
 
   await prisma.volunteerProfile.update({
     where: { id: volunteerId },
@@ -49,6 +50,7 @@ async function editBasicInfo(formData: FormData) {
       desiredHoursPerWeek: desiredHoursPerWeek ? parseFloat(desiredHoursPerWeek) : null,
       startDate: startDate || null,
       endDate: endDate || null,
+      motivation: motivation || null,
     },
   });
 
@@ -324,6 +326,7 @@ export default async function VolunteerDetailPage({
                 {volunteer.startDate && <span>Started: {volunteer.startDate}</span>}
                 {volunteer.desiredHoursPerWeek && <span>{volunteer.desiredHoursPerWeek} hrs/week desired</span>}
               </div>
+              {volunteer.motivation && <p className="text-sm text-gray-500 mt-1 italic">&ldquo;{volunteer.motivation}&rdquo;</p>}
               <div className="flex flex-wrap gap-2 mt-3">
                 {volunteer.departments.map((vd) => (
                   <Badge key={vd.departmentId} variant="secondary">{vd.department.name}</Badge>
@@ -381,6 +384,16 @@ export default async function VolunteerDetailPage({
                   placeholder="e.g. 5"
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Motivation</label>
+              <textarea
+                name="motivation"
+                defaultValue={volunteer.motivation || ""}
+                placeholder="Why does this volunteer want to help? What motivates them?"
+                rows={3}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
             </div>
             <Button type="submit" size="sm">Save Changes</Button>
           </form>
