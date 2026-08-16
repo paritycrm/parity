@@ -87,8 +87,8 @@ export default async function TrainingPage() {
     const description = (formData.get("description") as string) || null;
     const isMandatory = formData.get("isMandatory") === "on";
     const validityMonths = formData.get("validityMonths") ? parseInt(formData.get("validityMonths") as string) : null;
-    const amberMonths = formData.get("amberMonths") ? parseInt(formData.get("amberMonths") as string) : 3;
-    const redMonths = formData.get("redMonths") ? parseInt(formData.get("redMonths") as string) : 1;
+    const amberMonths = validityMonths && formData.get("amberMonths") ? parseInt(formData.get("amberMonths") as string) : null;
+    const redMonths = validityMonths && formData.get("redMonths") ? parseInt(formData.get("redMonths") as string) : null;
 
     await prisma.trainingCourse.create({
       data: { name, description, isMandatory, validityMonths, amberMonths, redMonths },
@@ -104,8 +104,8 @@ export default async function TrainingPage() {
     const description = (formData.get("description") as string) || null;
     const isMandatory = formData.get("isMandatory") === "on";
     const validityMonths = formData.get("validityMonths") ? parseInt(formData.get("validityMonths") as string) : null;
-    const amberMonths = formData.get("amberMonths") ? parseInt(formData.get("amberMonths") as string) : null;
-    const redMonths = formData.get("redMonths") ? parseInt(formData.get("redMonths") as string) : null;
+    const amberMonths = validityMonths && formData.get("amberMonths") ? parseInt(formData.get("amberMonths") as string) : null;
+    const redMonths = validityMonths && formData.get("redMonths") ? parseInt(formData.get("redMonths") as string) : null;
 
     await prisma.trainingCourse.update({
       where: { id },
@@ -164,13 +164,13 @@ export default async function TrainingPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" />Amber</span>
                 </label>
-                <input name="amberMonths" type="number" defaultValue="3" min="1" placeholder="3" className={inputClass} />
+                <input name="amberMonths" type="number" min="1" placeholder="3" className={inputClass} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" />Red</span>
                 </label>
-                <input name="redMonths" type="number" defaultValue="1" min="1" placeholder="1" className={inputClass} />
+                <input name="redMonths" type="number" min="1" placeholder="1" className={inputClass} />
               </div>
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -229,12 +229,12 @@ export default async function TrainingPage() {
                   {/* Amber - 1 col */}
                   <div className="col-span-1">
                     <label className="sr-only">Amber (months)</label>
-                    <input name="amberMonths" type="number" min="1" defaultValue={course.amberMonths ?? 3} title="Amber threshold (months)" className="w-full rounded border border-transparent group-hover:border-gray-300 px-2 py-1.5 text-sm text-center text-gray-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-transparent" />
+                    <input name="amberMonths" type="number" min="1" defaultValue={course.amberMonths ?? ""} placeholder="—" title="Amber threshold (months)" className="w-full rounded border border-transparent group-hover:border-gray-300 px-2 py-1.5 text-sm text-center text-gray-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-transparent" />
                   </div>
                   {/* Red - 1 col */}
                   <div className="col-span-1">
                     <label className="sr-only">Red (months)</label>
-                    <input name="redMonths" type="number" min="1" defaultValue={course.redMonths ?? 1} title="Red threshold (months)" className="w-full rounded border border-transparent group-hover:border-gray-300 px-2 py-1.5 text-sm text-center text-gray-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-transparent" />
+                    <input name="redMonths" type="number" min="1" defaultValue={course.redMonths ?? ""} placeholder="—" title="Red threshold (months)" className="w-full rounded border border-transparent group-hover:border-gray-300 px-2 py-1.5 text-sm text-center text-gray-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-transparent" />
                   </div>
                   {/* Enrolled count - 1 col */}
                   <div className="col-span-1 text-center">

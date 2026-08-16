@@ -1496,8 +1496,8 @@ model TrainingCourse {
   description    String?
   isMandatory    Boolean  @default(false)
   validityMonths Int? // how long certification lasts (null = never expires)
-  amberMonths    Int?     @default(3) // RAG amber: months before expiry to warn
-  redMonths      Int?     @default(1) // RAG red: months before expiry = urgent
+  amberMonths    Int? // RAG amber: months before expiry to warn
+  redMonths      Int? // RAG red: months before expiry = urgent
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
