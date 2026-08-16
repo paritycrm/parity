@@ -1516,13 +1516,15 @@ export default async function ContactDetailPage({
                             </td>
                             <td className="py-3 px-2 text-gray-500">{t.createdAt ? formatDate(t.createdAt) : "—"}</td>
                             <td className="py-3 px-2 text-gray-500">{t.completedDate ? formatDate(t.completedDate) : "—"}</td>
-                            <td className="py-3 px-2 text-gray-500">{t.expiryDate ? formatDate(t.expiryDate) : "—"}</td>
+                            <td className="py-3 px-2 text-gray-500">{t.expiryDate ? formatDate(t.expiryDate) : (t.course.validityMonths ? "—" : "")}</td>
                             <td className="py-3 px-2">
                               {ragLabel ? (
                                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700">
                                   <span className={`h-2.5 w-2.5 rounded-full ${ragColor}`} />
                                   {ragLabel}
                                 </span>
+                              ) : !t.course.validityMonths ? (
+                                <span className="text-xs text-gray-400">No expiry</span>
                               ) : (
                                 <span className="text-xs text-gray-400">—</span>
                               )}

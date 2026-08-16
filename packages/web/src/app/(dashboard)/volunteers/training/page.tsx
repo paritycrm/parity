@@ -147,7 +147,7 @@ export default async function TrainingPage() {
         </CardHeader>
         <CardContent>
           <form action={createCourse} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3 items-end">
               <div className="lg:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Course Name</label>
                 <input name="name" required placeholder="e.g. First Aid" className={inputClass} />
@@ -157,35 +157,32 @@ export default async function TrainingPage() {
                 <input name="description" placeholder="Optional" className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Validity</label>
-                <input name="validityMonths" type="number" placeholder="months" className={inputClass} />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Renewal (months)</label>
+                <input name="validityMonths" type="number" placeholder="No expiry" className={inputClass} />
               </div>
-              <div className="flex items-center h-[38px]">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" />Amber</span>
+                </label>
+                <input name="amberMonths" type="number" defaultValue="3" min="1" placeholder="3" className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" />Red</span>
+                </label>
+                <input name="redMonths" type="number" defaultValue="1" min="1" placeholder="1" className={inputClass} />
+              </div>
+              <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input name="isMandatory" type="checkbox" className="rounded border-gray-300 h-4 w-4" />
                   <span className="text-sm font-medium text-gray-700">Mandatory</span>
                 </label>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />Amber (months)</span>
-                </label>
-                <input name="amberMonths" type="number" defaultValue="3" min="1" className={inputClass} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" />Red (months)</span>
-                </label>
-                <input name="redMonths" type="number" defaultValue="1" min="1" className={inputClass} />
-              </div>
-              <div>
                 <Button type="submit" className="w-full">
-                  <Plus className="h-4 w-4 mr-1" /> Add Course
+                  <Plus className="h-4 w-4 mr-1" /> Add
                 </Button>
               </div>
             </div>
+            <p className="text-xs text-gray-400">Leave renewal blank for courses that never expire. Amber and red thresholds only apply to courses with a renewal period.</p>
           </form>
         </CardContent>
       </Card>
