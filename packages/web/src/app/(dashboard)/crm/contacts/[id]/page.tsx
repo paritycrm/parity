@@ -83,6 +83,15 @@ export default async function ContactDetailPage({
     take: 50,
   });
 
+  // Fetch all training courses for enrolment dropdown (only if volunteer)
+  const allTrainingCourses = contact.volunteerProfile
+    ? await prisma.trainingCourse.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } })
+    : [];
+
+  // IDs already enrolled so we can filter them out
+  const enrolledCourseIds = new Set(contact.volunteerProfile?.trainings.map((t: any) => t.courseId) ?? []);
+  const availableCourses = allTrainingCourses.filter((c) => !enrolledCourseIds.has(c.id));
+
   // -- Server Actions --
 
   async function addFundraisingPage(formData: FormData) {
@@ -269,6 +278,69 @@ export default async function ContactDetailPage({
       data: { motivation, status, startDate, desiredHoursPerWeek },
     });
     await logAudit({ userId: session.id, action: "UPDATE", entityType: "VolunteerProfile", entityId: profile.id, details: { motivation, status } });
+    revalidatePath(`/crm/contacts/${id}`);
+    redirect(`/crm/contacts/${id}`);
+  }
+
+  async function enrolTraining(formData: FormData) {
+    "use server";
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const courseId = formData.get("courseId") as string;
+    if (!courseId) return;
+
+    const profile = await prisma.volunteerProfile.findUnique({ where: { contactId: id } });
+    if (!profile) return;
+
+    // Upsert in case they were previously enrolled (unique constraint on volunteerId+courseId)
+    await prisma.volunteerTraining.upsert({
+      where: { volunteerId_courseId: { volunteerId: profile.id, courseId } },
+      create: { volunteerId: profile.id, courseId, status: "NOT_STARTED" },
+      update: { status: "NOT_STARTED", completedDate: null, expiryDate: null },
+    });
+    await logAudit({ userId: session.id, action: "CREATE", entityType: "VolunteerTraining", entityId: courseId, details: { contactId: id, courseId } });
+    revalidatePath(`/crm/contacts/${id}`);
+    redirect(`/crm/contacts/${id}`);
+  }
+
+  async function updateTrainingStatus(formData: FormData) {
+    "use server";
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const trainingId = formData.get("trainingId") as string;
+    const status = formData.get("status") as string;
+    if (!trainingId || !status) return;
+
+    const data: any = { status };
+    if (status === "COMPLETED") {
+      data.completedDate = new Date();
+      // Calculate expiry from course validity
+      const training = await prisma.volunteerTraining.findUnique({ where: { id: trainingId }, include: { course: true } });
+      if (training?.course.validityMonths) {
+        const expiry = new Date();
+        expiry.setMonth(expiry.getMonth() + training.course.validityMonths);
+        data.expiryDate = expiry;
+      }
+    }
+
+    await prisma.volunteerTraining.update({ where: { id: trainingId }, data });
+    await logAudit({ userId: session.id, action: "UPDATE", entityType: "VolunteerTraining", entityId: trainingId, details: { status } });
+    revalidatePath(`/crm/contacts/${id}`);
+    redirect(`/crm/contacts/${id}`);
+  }
+
+  async function removeTraining(formData: FormData) {
+    "use server";
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const trainingId = formData.get("trainingId") as string;
+    if (!trainingId) return;
+
+    await prisma.volunteerTraining.delete({ where: { id: trainingId } });
+    await logAudit({ userId: session.id, action: "DELETE", entityType: "VolunteerTraining", entityId: trainingId, details: { contactId: id } });
     revalidatePath(`/crm/contacts/${id}`);
     redirect(`/crm/contacts/${id}`);
   }
@@ -1357,6 +1429,30 @@ export default async function ContactDetailPage({
         ) : undefined}
         trainingContent={contact.volunteerProfile ? (
           <div className="space-y-6">
+            {/* Enrol in a new course */}
+            {availableCourses.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <h3 className="text-lg font-semibold text-gray-900">Enrol in Course</h3>
+                </CardHeader>
+                <CardContent>
+                  <form action={enrolTraining} className="flex items-end gap-3">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Training Course</label>
+                      <select name="courseId" required className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                        <option value="">Select a course...</option>
+                        {availableCourses.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button type="submit">Enrol</Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Enrolled courses table */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -1377,6 +1473,7 @@ export default async function ContactDetailPage({
                           <th className="text-left py-3 px-2 font-medium text-gray-500">Enrolled</th>
                           <th className="text-left py-3 px-2 font-medium text-gray-500">Completed</th>
                           <th className="text-left py-3 px-2 font-medium text-gray-500">Expires</th>
+                          <th className="text-right py-3 px-2 font-medium text-gray-500">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1398,6 +1495,37 @@ export default async function ContactDetailPage({
                             <td className="py-3 px-2 text-gray-500">{t.createdAt ? formatDate(t.createdAt) : "—"}</td>
                             <td className="py-3 px-2 text-gray-500">{t.completedDate ? formatDate(t.completedDate) : "—"}</td>
                             <td className="py-3 px-2 text-gray-500">{t.expiryDate ? formatDate(t.expiryDate) : "—"}</td>
+                            <td className="py-3 px-2 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {t.status === "NOT_STARTED" && (
+                                  <form action={updateTrainingStatus}>
+                                    <input type="hidden" name="trainingId" value={t.id} />
+                                    <input type="hidden" name="status" value="IN_PROGRESS" />
+                                    <Button type="submit" variant="outline" className="text-xs h-7 px-2">Start</Button>
+                                  </form>
+                                )}
+                                {t.status === "IN_PROGRESS" && (
+                                  <form action={updateTrainingStatus}>
+                                    <input type="hidden" name="trainingId" value={t.id} />
+                                    <input type="hidden" name="status" value="COMPLETED" />
+                                    <Button type="submit" variant="outline" className="text-xs h-7 px-2 text-green-700 border-green-300 hover:bg-green-50">Complete</Button>
+                                  </form>
+                                )}
+                                {t.status === "EXPIRED" && (
+                                  <form action={updateTrainingStatus}>
+                                    <input type="hidden" name="trainingId" value={t.id} />
+                                    <input type="hidden" name="status" value="NOT_STARTED" />
+                                    <Button type="submit" variant="outline" className="text-xs h-7 px-2">Re-enrol</Button>
+                                  </form>
+                                )}
+                                <form action={removeTraining}>
+                                  <input type="hidden" name="trainingId" value={t.id} />
+                                  <Button type="submit" variant="outline" className="text-xs h-7 px-2 text-red-600 border-red-200 hover:bg-red-50">
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </form>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
