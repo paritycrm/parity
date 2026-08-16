@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     type: d.type,
     method: d.method,
     reference: d.reference,
-    amount: d.amount,
+    amount: Number(d.amount),
     ledgerCode: d.ledgerCode?.code || null,
     ledgerName: d.ledgerCode?.name || null,
     campaignName: d.campaign?.name || null,

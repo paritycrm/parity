@@ -113,7 +113,7 @@ export default async function BankDocumentDetailPage({
     type: d.type,
     method: d.method || "",
     reference: d.reference || "",
-    amount: d.amount,
+    amount: Number(d.amount),
     ledgerCodeId: d.ledgerCode?.id || "",
     ledgerCode: d.ledgerCode?.code || "",
     campaignId: d.campaign?.id || "",

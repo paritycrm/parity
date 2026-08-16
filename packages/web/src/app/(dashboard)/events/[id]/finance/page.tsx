@@ -251,7 +251,7 @@ export default async function EventFinancePage({
                         name="actual"
                         type="number"
                         step="0.01"
-                        defaultValue={line.actual}
+                        defaultValue={Number(line.actual)}
                         className="w-24 rounded border border-gray-300 px-2 py-1 text-sm text-right"
                       />
                       <Button type="submit" size="sm" variant="outline" className="text-xs h-7 px-2">
@@ -339,7 +339,7 @@ export default async function EventFinancePage({
                         name="actual"
                         type="number"
                         step="0.01"
-                        defaultValue={line.actual}
+                        defaultValue={Number(line.actual)}
                         className="w-24 rounded border border-gray-300 px-2 py-1 text-sm text-right"
                       />
                       <Button type="submit" size="sm" variant="outline" className="text-xs h-7 px-2">

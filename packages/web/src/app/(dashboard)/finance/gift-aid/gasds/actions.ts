@@ -40,11 +40,11 @@ export async function importTinReturnsToGasds(claimId: string, periodStart: Date
 
   // Process each tin return
   for (const tinReturn of tinReturns) {
-    if (tinReturn.amount === 0) continue;
+    if (Number(tinReturn.amount) === 0) continue;
 
     // Split amounts > £30
-    const fullChunks = Math.floor(tinReturn.amount / 30);
-    const remainder = tinReturn.amount % 30;
+    const fullChunks = Math.floor(Number(tinReturn.amount) / 30);
+    const remainder = Number(tinReturn.amount) % 30;
 
     // Create full £30 entries
     for (let i = 0; i < fullChunks; i++) {
@@ -84,7 +84,7 @@ export async function importTinReturnsToGasds(claimId: string, periodStart: Date
     where: { claimId },
   });
 
-  const totalSmallDonations = allEntries.reduce((sum, e) => sum + e.amount, 0);
+  const totalSmallDonations = allEntries.reduce((sum, e) => sum + Number(e.amount), 0);
   const claimAmount = Math.round(totalSmallDonations * 0.25 * 100) / 100;
 
   await prisma.gasdsClaim.update({

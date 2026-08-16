@@ -250,12 +250,12 @@ export default async function NewGiftAidClaimPage({
     contactId: d.contactId,
     contactName: `${d.contact.firstName || ""} ${d.contact.lastName || ""}`.trim(),
     postcode: d.contact.postcode,
-    amount: d.amount,
+    amount: Number(d.amount),
     date: d.date.toISOString(),
     type: d.type,
     method: d.method,
     reference: d.reference,
-    giftAidAmount: calculateGiftAid(d.amount),
+    giftAidAmount: calculateGiftAid(Number(d.amount)),
     hasValidPostcode: d.contact.postcode ? isValidUKPostcode(d.contact.postcode) : false,
   }));
 

@@ -43,8 +43,8 @@ export async function GET(
     }
 
     // Calculate ROI metrics
-    const budgetTarget = campaign.budgetTarget ?? 0;
-    const actualRaised = campaign.donations.reduce((sum, d) => sum + d.amount, 0);
+    const budgetTarget = campaign.budgetTarget ? Number(campaign.budgetTarget) : 0;
+    const actualRaised = campaign.donations.reduce((sum, d) => sum + Number(d.amount), 0);
     const donorCount = campaign.donations.length;
     const roiPercentage = budgetTarget > 0 ? ((actualRaised - budgetTarget) / budgetTarget) * 100 : 0;
     const dacDivisor = donorCount > 0 ? donorCount : 1;

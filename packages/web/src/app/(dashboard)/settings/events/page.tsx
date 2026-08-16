@@ -109,7 +109,7 @@ export default async function EventsSettingsPage() {
                 name="eventsIncomeTarget"
                 type="number"
                 step="0.01"
-                defaultValue={settings?.eventsIncomeTarget ?? ""}
+                defaultValue={settings?.eventsIncomeTarget ? Number(settings.eventsIncomeTarget) : ""}
                 placeholder="e.g. 400000"
               />
               <Input
@@ -117,7 +117,7 @@ export default async function EventsSettingsPage() {
                 name="eventsCostBudget"
                 type="number"
                 step="0.01"
-                defaultValue={settings?.eventsCostBudget ?? ""}
+                defaultValue={settings?.eventsCostBudget ? Number(settings.eventsCostBudget) : ""}
                 placeholder="e.g. 250000"
               />
               <Input
@@ -125,7 +125,7 @@ export default async function EventsSettingsPage() {
                 name="eventsProfitTarget"
                 type="number"
                 step="0.01"
-                defaultValue={settings?.eventsProfitTarget ?? ""}
+                defaultValue={settings?.eventsProfitTarget ? Number(settings.eventsProfitTarget) : ""}
                 placeholder="e.g. 150000"
               />
             </div>

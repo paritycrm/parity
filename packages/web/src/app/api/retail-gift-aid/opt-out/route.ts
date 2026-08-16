@@ -83,8 +83,8 @@ export async function POST(request: Request) {
     });
 
     const included = allItems.filter((i) => i.status === "INCLUDED");
-    const totalDonations = included.reduce((sum, i) => sum + i.donationAmount, 0);
-    const totalClaimable = included.reduce((sum, i) => sum + i.giftAidAmount, 0);
+    const totalDonations = included.reduce((sum, i) => sum + Number(i.donationAmount), 0);
+    const totalClaimable = included.reduce((sum, i) => sum + Number(i.giftAidAmount), 0);
 
     await prisma.giftAidClaim.update({
       where: { id: notification.claimId },

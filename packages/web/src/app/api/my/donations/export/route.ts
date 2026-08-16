@@ -32,12 +32,12 @@ export async function GET(request: NextRequest) {
   const rows = [
     ["Date", "Type", "For", "Amount", "Gift Aid Eligible", "Gift Aid Value"].join(","),
     ...donations.map((d) => {
-      const giftAidValue = d.isGiftAidable ? (d.amount * 0.25).toFixed(2) : "0.00";
+      const giftAidValue = d.isGiftAidable ? (Number(d.amount) * 0.25).toFixed(2) : "0.00";
       return [
         formatDate(d.date),
         d.type.replace("_", " "),
         `"${d.event?.name || d.campaign?.name || "General"}"`,
-        d.amount.toFixed(2),
+        Number(d.amount).toFixed(2),
         d.isGiftAidable ? "Yes" : "No",
         giftAidValue,
       ].join(",");
@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
   ];
 
   // Add totals row
-  const total = donations.reduce((s, d) => s + d.amount, 0);
-  const giftAidTotal = donations.filter((d) => d.isGiftAidable).reduce((s, d) => s + d.amount * 0.25, 0);
+  const total = donations.reduce((s, d) => s + Number(d.amount), 0);
+  const giftAidTotal = donations.filter((d) => d.isGiftAidable).reduce((s, d) => s + Number(d.amount) * 0.25, 0);
   rows.push("");
   rows.push(["", "", "Total", total.toFixed(2), "", giftAidTotal.toFixed(2)].join(","));
 

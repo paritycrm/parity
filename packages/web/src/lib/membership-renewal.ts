@@ -232,7 +232,7 @@ export async function renewMembership(membershipId: string): Promise<void> {
       memberNumber: membership.memberNumber,
       renewalDate: now.toLocaleDateString(),
       newExpiryDate: newEndDate.toLocaleDateString(),
-      amount: membership.membershipType.price,
+      amount: Number(membership.membershipType.price),
       currency: membership.membershipType.currency,
     });
 
@@ -285,7 +285,7 @@ export async function getRenewalStats(): Promise<RenewalStats> {
       }),
     ]);
 
-  const totalRevenue = membershipTypes.reduce((sum, type) => sum + type.price, 0);
+  const totalRevenue = membershipTypes.reduce((sum, type) => sum + Number(type.price), 0);
 
   return {
     upcomingCount,

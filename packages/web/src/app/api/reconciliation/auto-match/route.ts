@@ -161,12 +161,12 @@ async function findMatchCandidates(
   }
 
   // 4. Amount range match (MEDIUM confidence) - within 5%
-  const amountRange = transaction.amount * 0.05;
+  const amountRange = Number(transaction.amount) * 0.05;
   const rangeMatches = await prisma.donation.findMany({
     where: {
       amount: {
-        gte: transaction.amount - amountRange,
-        lte: transaction.amount + amountRange,
+        gte: Number(transaction.amount) - amountRange,
+        lte: Number(transaction.amount) + amountRange,
       },
       date: {
         gte: new Date(transaction.date.getTime() - 7 * 24 * 60 * 60 * 1000),

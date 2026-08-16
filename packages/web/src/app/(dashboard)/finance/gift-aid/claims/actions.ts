@@ -98,7 +98,7 @@ export async function createClaim(formData: FormData) {
 
   const items = eligibleDonations.map((donation) => {
     const isExcluded = excludedIds.includes(donation.id);
-    const giftAid = calculateGiftAid(donation.amount);
+    const giftAid = calculateGiftAid(Number(donation.amount));
     const hasValidPostcode = donation.contact.postcode
       ? isValidUKPostcode(donation.contact.postcode)
       : false;
@@ -116,7 +116,7 @@ export async function createClaim(formData: FormData) {
     }
 
     if (status === "INCLUDED") {
-      totalDonations += donation.amount;
+      totalDonations += Number(donation.amount);
       totalClaimable += giftAid;
       includedCount++;
     }
@@ -235,8 +235,8 @@ export async function toggleClaimItem(formData: FormData) {
   });
 
   const includedItems = allItems.filter((i) => i.status === "INCLUDED");
-  const totalDonations = includedItems.reduce((sum, i) => sum + i.donationAmount, 0);
-  const totalClaimable = includedItems.reduce((sum, i) => sum + i.giftAidAmount, 0);
+  const totalDonations = includedItems.reduce((sum, i) => sum + Number(i.donationAmount), 0);
+  const totalClaimable = includedItems.reduce((sum, i) => sum + Number(i.giftAidAmount), 0);
 
   await prisma.giftAidClaim.update({
     where: { id: claimId },
@@ -334,8 +334,8 @@ export async function sendRetailNotifications(formData: FormData) {
 
       // Calculate this contact's totals
       const contactItems = claim.items.filter((i) => i.contactId === contact.id);
-      const totalProceeds = contactItems.reduce((s, i) => s + i.donationAmount, 0);
-      const giftAidAmount = contactItems.reduce((s, i) => s + i.giftAidAmount, 0);
+      const totalProceeds = contactItems.reduce((s, i) => s + Number(i.donationAmount), 0);
+      const giftAidAmount = contactItems.reduce((s, i) => s + Number(i.giftAidAmount), 0);
 
       const hasEmail = !!contact.email;
       const method = hasEmail ? "EMAIL" : "POST";

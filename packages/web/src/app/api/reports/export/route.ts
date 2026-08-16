@@ -152,7 +152,7 @@ async function getContactsData(filters: Filter[]) {
     status: contact.status,
     createdAt: contact.createdAt.toISOString().split("T")[0],
     donationCount: contact.donations.length,
-    totalDonations: contact.donations.reduce((sum, d) => sum + d.amount, 0),
+    totalDonations: contact.donations.reduce((sum, d) => sum + Number(d.amount), 0),
     lastDonationDate:
       contact.donations.length > 0
         ? contact.donations[0].date.toISOString().split("T")[0]
@@ -177,7 +177,7 @@ async function getDonationsData(filters: Filter[]) {
   });
 
   return donations.map((donation) => ({
-    amount: donation.amount,
+    amount: Number(donation.amount),
     date: donation.date.toISOString().split("T")[0],
     type: donation.type,
     method: donation.method || "",
@@ -205,7 +205,7 @@ async function getEventsData(filters: Filter[]) {
     startDate: event.startDate.toISOString().split("T")[0],
     endDate: event.endDate ? event.endDate.toISOString().split("T")[0] : "",
     attendeeCount: event._count?.attendees || 0,
-    totalIncome: event.donations?.reduce((sum: number, d: any) => sum + d.amount, 0) || 0,
+    totalIncome: event.donations?.reduce((sum: number, d: any) => sum + Number(d.amount), 0) || 0,
   }));
 }
 
@@ -228,8 +228,8 @@ async function getCampaignsData(filters: Filter[]) {
     name: campaign.name,
     type: campaign.type || "",
     status: campaign.status,
-    budgetTarget: campaign.budgetTarget || 0,
-    actualRaised: campaign.actualRaised,
+    budgetTarget: campaign.budgetTarget ? Number(campaign.budgetTarget) : 0,
+    actualRaised: Number(campaign.actualRaised),
     startDate: campaign.startDate
       ? campaign.startDate.toISOString().split("T")[0]
       : "",
@@ -237,7 +237,7 @@ async function getCampaignsData(filters: Filter[]) {
       ? campaign.endDate.toISOString().split("T")[0]
       : "",
     progress: campaign.budgetTarget
-      ? Math.round((campaign.actualRaised / campaign.budgetTarget) * 100)
+      ? Math.round((Number(campaign.actualRaised) / Number(campaign.budgetTarget)) * 100)
       : 0,
   }));
 }
@@ -280,7 +280,7 @@ async function getMembershipsData(filters: Filter[]) {
     status: mem.status,
     startDate: mem.startDate.toISOString().split("T")[0],
     expiryDate: mem.endDate.toISOString().split("T")[0],
-    amount: mem.amountPaid || 0,
+    amount: mem.amountPaid ? Number(mem.amountPaid) : 0,
   }));
 }
 

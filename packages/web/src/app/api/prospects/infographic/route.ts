@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     for (const tin of loc.tins) {
       for (const mov of tin.movements) {
         if (mov.amount) {
-          totalCollections += mov.amount;
+          totalCollections += Number(mov.amount);
           collectionCount++;
         }
       }

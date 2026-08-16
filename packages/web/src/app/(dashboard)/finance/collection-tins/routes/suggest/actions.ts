@@ -93,7 +93,7 @@ export async function suggestRoute(formData: FormData): Promise<SuggestedRoute |
     const allMovements = loc.tins.flatMap((t) => t.movements);
     const amounts = allMovements
       .filter((m) => m.amount !== null)
-      .map((m) => m.amount!);
+      .map((m) => Number(m.amount!));
     const avgCollected =
       amounts.length > 0
         ? amounts.reduce((a, b) => a + b, 0) / amounts.length

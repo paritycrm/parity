@@ -322,7 +322,7 @@ export default async function LegacyDetailPage({
                 type="number"
                 step="0.01"
                 placeholder="£0.00"
-                defaultValue={legacy.estimatedAmount || ""}
+                defaultValue={legacy.estimatedAmount ? Number(legacy.estimatedAmount) : ""}
               />
               <Input
                 label="Received Amount"
@@ -330,7 +330,7 @@ export default async function LegacyDetailPage({
                 type="number"
                 step="0.01"
                 placeholder="£0.00"
-                defaultValue={legacy.receivedAmount || ""}
+                defaultValue={legacy.receivedAmount ? Number(legacy.receivedAmount) : ""}
               />
             </div>
 

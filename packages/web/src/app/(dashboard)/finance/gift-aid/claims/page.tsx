@@ -195,7 +195,7 @@ export default async function GiftAidClaimsPage({
                       {claim.donationCount}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium text-gray-900 text-right">
-                      {formatCurrency(claim.totalClaimable)}
+                      {formatCurrency(Number(claim.totalClaimable))}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
                       {claim.submittedBy?.name || claim.createdBy.name}

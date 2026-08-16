@@ -222,7 +222,7 @@ export async function POST(request: Request) {
             {
               donationId: donation.id,
               contactId: donation.contact.id,
-              amount: donation.amount,
+              amount: Number(donation.amount),
               currency: donation.currency,
               date: donation.date,
               donorName: donorFullName || "Unnamed Donor",
@@ -240,7 +240,7 @@ export async function POST(request: Request) {
               accessToken,
               config.tenantId,
               invoiceId,
-              donation.amount,
+              Number(donation.amount),
               donation.date,
               config.defaultBankAccountCode || "200"
             );

@@ -418,7 +418,7 @@ export default async function SubscriptionDetailPage({
                 type="number"
                 step="0.01"
                 required
-                defaultValue={subscription.amount}
+                defaultValue={Number(subscription.amount)}
               />
               <Select
                 label="Frequency"

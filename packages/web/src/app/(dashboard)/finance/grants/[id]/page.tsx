@@ -617,8 +617,8 @@ export default async function GrantDetailPage({
                         <Input label="Reference" name="reference" defaultValue={grant.reference || ""} />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <Input label="Amount Requested" name="amountRequested" type="number" step="0.01" defaultValue={grant.amountRequested || ""} />
-                        <Input label="Amount Awarded" name="amountAwarded" type="number" step="0.01" defaultValue={grant.amountAwarded || ""} />
+                        <Input label="Amount Requested" name="amountRequested" type="number" step="0.01" defaultValue={grant.amountRequested ? Number(grant.amountRequested) : ""} />
+                        <Input label="Amount Awarded" name="amountAwarded" type="number" step="0.01" defaultValue={grant.amountAwarded ? Number(grant.amountAwarded) : ""} />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <Input label="Application Deadline" name="applicationDeadline" type="date" defaultValue={dateVal(grant.applicationDeadline)} />
@@ -781,6 +781,7 @@ export default async function GrantDetailPage({
                 <GrantInstalments
                   instalments={grant.instalments.map((i) => ({
                     ...i,
+                    amount: Number(i.amount),
                     expectedDate: i.expectedDate.toISOString(),
                     receivedDate: i.receivedDate?.toISOString() || null,
                   }))}

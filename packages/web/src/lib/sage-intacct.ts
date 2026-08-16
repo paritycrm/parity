@@ -197,7 +197,7 @@ export function mapDonationToJournal(
   // Debit/Credit line for the income account
   lines.push({
     accountNo: mapping.sageAccountNo,
-    amount: donation.amount,
+    amount: Number(donation.amount),
     debitCreditType: mapping.direction === "DEBIT" ? "debit" : "credit",
     department: mapping.sageDepartment,
     location: mapping.sageLocation,

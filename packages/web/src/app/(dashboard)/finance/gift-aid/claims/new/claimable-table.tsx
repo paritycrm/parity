@@ -245,10 +245,10 @@ export function ClaimableTable({
                       {d.reference || "—"}
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                      {formatCurrency(d.amount)}
+                      {formatCurrency(Number(d.amount))}
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-indigo-600 text-right">
-                      {isExcluded ? "—" : formatCurrency(d.giftAidAmount)}
+                      {isExcluded ? "—" : formatCurrency(Number(d.giftAidAmount))}
                     </td>
                   </tr>
                 );

@@ -165,19 +165,19 @@ export async function generateSOFA(
   const income = {
     donations: calculateIncomeByFundType(
       donations.map((d) => ({
-        amount: d.amount,
+        amount: Number(d.amount),
         fundType: "UNRESTRICTED", // LedgerCode doesn't have fundType, default to unrestricted
       }))
     ),
     grants: calculateIncomeByFundType(
       grants.map((g) => ({
-        amount: g.amountAwarded || 0,
+        amount: g.amountAwarded ? Number(g.amountAwarded) : 0,
         fundType: "RESTRICTED", // Grants are typically restricted
       }))
     ),
     memberships: calculateIncomeByFundType(
       memberships.map((m) => ({
-        amount: m.amountPaid || 0,
+        amount: m.amountPaid ? Number(m.amountPaid) : 0,
         fundType: "UNRESTRICTED",
       }))
     ),
@@ -287,8 +287,8 @@ export async function generateBalanceSheet(asOfDate: Date): Promise<BalanceSheet
 
   // Calculate total cash (donations + memberships)
   const totalCash =
-    donations.reduce((sum, d) => sum + d.amount, 0) +
-    memberships.reduce((sum, m) => sum + (m.amountPaid || 0), 0);
+    donations.reduce((sum, d) => sum + Number(d.amount), 0) +
+    memberships.reduce((sum, m) => sum + (m.amountPaid ? Number(m.amountPaid) : 0), 0);
 
   // Fund allocation
   // Note: LedgerCode doesn't have fundType, so all donations are treated as unrestricted

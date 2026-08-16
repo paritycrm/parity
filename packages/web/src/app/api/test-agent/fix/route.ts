@@ -28,8 +28,8 @@ export async function POST(request: Request) {
       });
       let fixedCount = 0;
       for (const c of campaigns) {
-        const correctTotal = c.donations.reduce((sum, d) => sum + d.amount, 0);
-        const diff = Math.abs(c.actualRaised - correctTotal);
+        const correctTotal = c.donations.reduce((sum, d) => sum + Number(d.amount), 0);
+        const diff = Math.abs(Number(c.actualRaised) - correctTotal);
         if (diff > 0.01) {
           await prisma.campaign.update({
             where: { id: c.id },

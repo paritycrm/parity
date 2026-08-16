@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     for (const tin of loc.tins) {
       for (const mov of tin.movements) {
         if (mov.amount) {
-          typeStats[loc.type].totalRaised += mov.amount;
+          typeStats[loc.type].totalRaised += Number(mov.amount);
           typeStats[loc.type].collections++;
         }
       }

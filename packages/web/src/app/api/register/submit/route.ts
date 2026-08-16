@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
         unitPrice = sel.customAmount || 0;
         lineTotal = unitPrice;
       } else {
-        unitPrice = item.price || 0;
+        unitPrice = item.price ? Number(item.price) : 0;
         lineTotal = unitPrice * sel.quantity;
       }
 
@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
       if (existingLine) {
         await prisma.eventIncomeLine.update({
           where: { id: existingLine.id },
-          data: { actual: existingLine.actual + amount },
+          data: { actual: Number(existingLine.actual) + amount },
         });
       } else {
         await prisma.eventIncomeLine.create({

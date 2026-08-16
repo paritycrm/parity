@@ -108,14 +108,14 @@ export async function generateQuarterlySummary(
   });
 
   const totalIncome =
-    (donations._sum.amount ?? 0) + (grants._sum.amountAwarded ?? 0);
+    Number(donations._sum.amount ?? 0) + Number(grants._sum.amountAwarded ?? 0);
 
   return {
     summary: {
       totalIncome,
-      totalDonations: donations._sum.amount ?? 0,
+      totalDonations: Number(donations._sum.amount ?? 0),
       donationCount: donations._count,
-      totalGrants: grants._sum.amountAwarded ?? 0,
+      totalGrants: Number(grants._sum.amountAwarded ?? 0),
       grantCount: grants._count,
       newContacts: contacts,
       totalEvents: events.length,
@@ -129,16 +129,16 @@ export async function generateQuarterlySummary(
         title: "Income Overview",
         data: {
           totalIncome,
-          donationIncome: donations._sum.amount ?? 0,
-          grantIncome: grants._sum.amountAwarded ?? 0,
+          donationIncome: Number(donations._sum.amount ?? 0),
+          grantIncome: Number(grants._sum.amountAwarded ?? 0),
           donationsByType: donationsByType.map((d) => ({
             type: d.type,
-            total: d._sum.amount ?? 0,
+            total: Number(d._sum.amount ?? 0),
             count: d._count,
           })),
           donationsByMethod: donationsByMethod.map((d) => ({
             method: d.method ?? "Unknown",
-            total: d._sum.amount ?? 0,
+            total: Number(d._sum.amount ?? 0),
             count: d._count,
           })),
         },
@@ -260,9 +260,9 @@ export async function generateFundraisingUpdate(
 
   return {
     summary: {
-      totalRaised: donations._sum.amount ?? 0,
+      totalRaised: Number(donations._sum.amount ?? 0),
       donationCount: donations._count,
-      averageDonation: donations._avg.amount ?? 0,
+      averageDonation: Number(donations._avg.amount ?? 0),
       activeCampaigns: campaigns.length,
       grantApplications: grants.length,
     },
@@ -270,9 +270,9 @@ export async function generateFundraisingUpdate(
       {
         title: "Fundraising Summary",
         data: {
-          totalRaised: donations._sum.amount ?? 0,
+          totalRaised: Number(donations._sum.amount ?? 0),
           donationCount: donations._count,
-          averageDonation: donations._avg.amount ?? 0,
+          averageDonation: Number(donations._avg.amount ?? 0),
         },
       },
       {
@@ -280,7 +280,7 @@ export async function generateFundraisingUpdate(
         data: {
           donors: topDonors.map((d) => ({
             name: contactMap.get(d.contactId) ?? "Unknown",
-            totalDonated: d._sum.amount ?? 0,
+            totalDonated: Number(d._sum.amount ?? 0),
             donationCount: d._count,
           })),
         },
@@ -290,16 +290,16 @@ export async function generateFundraisingUpdate(
         data: {
           campaigns: campaigns.map((c) => {
             const raised = c.donations.reduce(
-              (sum, d) => sum + d.amount,
+              (sum, d) => sum + Number(d.amount),
               0
             );
             return {
               name: c.name,
               status: c.status,
-              target: c.budgetTarget,
+              target: c.budgetTarget ? Number(c.budgetTarget) : null,
               raised,
               percentOfTarget: c.budgetTarget
-                ? Math.round((raised / c.budgetTarget) * 100)
+                ? Math.round((raised / Number(c.budgetTarget)) * 100)
                 : null,
             };
           }),
@@ -365,7 +365,7 @@ export async function generateMembershipReport(
       newMemberships,
       renewals,
       cancellations,
-      revenue: membershipRevenue._sum.amountPaid ?? 0,
+      revenue: Number(membershipRevenue._sum.amountPaid ?? 0),
     },
     sections: [
       {
@@ -390,7 +390,7 @@ export async function generateMembershipReport(
       {
         title: "Revenue",
         data: {
-          totalRevenue: membershipRevenue._sum.amountPaid ?? 0,
+          totalRevenue: Number(membershipRevenue._sum.amountPaid ?? 0),
         },
       },
     ],

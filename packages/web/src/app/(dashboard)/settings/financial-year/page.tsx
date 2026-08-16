@@ -150,7 +150,7 @@ export default async function FinancialYearSettingsPage() {
                 step="0.01"
                 min="0"
                 required
-                defaultValue={settings.goldDonorThreshold}
+                defaultValue={Number(settings.goldDonorThreshold)}
               />
             </div>
             <p className="text-xs text-gray-500">

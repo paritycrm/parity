@@ -64,7 +64,7 @@ export async function PUT(
       where: { claimId: entry.claimId },
     });
 
-    const totalSmallDonations = entries.reduce((sum, e) => sum + e.amount, 0);
+    const totalSmallDonations = entries.reduce((sum, e) => sum + Number(e.amount), 0);
     const claimAmount = Math.round(totalSmallDonations * 0.25 * 100) / 100;
 
     await prisma.gasdsClaim.update({
@@ -128,7 +128,7 @@ export async function DELETE(
       where: { claimId },
     });
 
-    const totalSmallDonations = entries.reduce((sum, e) => sum + e.amount, 0);
+    const totalSmallDonations = entries.reduce((sum, e) => sum + Number(e.amount), 0);
     const claimAmount = Math.round(totalSmallDonations * 0.25 * 100) / 100;
 
     await prisma.gasdsClaim.update({

@@ -31,9 +31,9 @@ export async function GET(req: NextRequest) {
 
     STAGES.forEach((stage) => {
       const stageOpps = opportunities.filter((opp) => opp.stage === stage);
-      const stageValue = stageOpps.reduce((sum, opp) => sum + opp.amount, 0);
+      const stageValue = stageOpps.reduce((sum, opp) => sum + Number(opp.amount), 0);
       const stageWeighted = stageOpps.reduce(
-        (sum, opp) => sum + opp.amount * (opp.probability / 100),
+        (sum, opp) => sum + Number(opp.amount) * (opp.probability / 100),
         0
       );
 
@@ -61,11 +61,11 @@ export async function GET(req: NextRequest) {
 
     // Find top opportunities
     const topOpportunities = opportunities
-      .sort((a, b) => b.amount - a.amount)
+      .sort((a, b) => Number(b.amount) - Number(a.amount))
       .slice(0, 10)
       .map((opp) => ({
         id: opp.id,
-        amount: opp.amount,
+        amount: Number(opp.amount),
         stage: opp.stage,
       }));
 
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
         {} as Record<string, number>
       ),
       averageDealSize: opportunities.length > 0
-        ? opportunities.reduce((sum, opp) => sum + opp.amount, 0) / opportunities.length
+        ? opportunities.reduce((sum, opp) => sum + Number(opp.amount), 0) / opportunities.length
         : 0,
       conversionRate:
         totalClosed > 0 ? ((totalWon / totalClosed) * 100).toFixed(1) : "0",

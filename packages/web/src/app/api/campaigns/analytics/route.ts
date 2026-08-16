@@ -35,14 +35,14 @@ export async function GET(req: NextRequest) {
     let completedCampaigns = 0;
 
     const campaignMetrics = campaigns.map((campaign) => {
-      const totalRaisedForCampaign = campaign.donations.reduce((sum, d) => sum + d.amount, 0);
-      const budgetTarget = campaign.budgetTarget ?? 0;
+      const totalRaisedForCampaign = campaign.donations.reduce((sum, d) => sum + Number(d.amount), 0);
+      const budgetTarget = campaign.budgetTarget ? Number(campaign.budgetTarget) : 0;
       const roi = budgetTarget > 0 ? ((totalRaisedForCampaign - budgetTarget) / budgetTarget) * 100 : 0;
       const donorCount = campaign.donations.length;
       const dacIfBudgetTarget = budgetTarget > 0 && donorCount > 0 ? budgetTarget / donorCount : 0;
 
       totalBudgetTarget += budgetTarget;
-      totalRaised += campaign.actualRaised;
+      totalRaised += Number(campaign.actualRaised);
       totalSpent += budgetTarget;
 
       if (campaign.status === "ACTIVE" || campaign.status === "PAUSED") {

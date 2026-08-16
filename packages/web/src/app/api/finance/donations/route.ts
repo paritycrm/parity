@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
   // Trigger automations
   await executeAutomations("DONATION_RECEIVED", {
     contactId: donation.contactId,
-    amount: donation.amount,
+    amount: Number(donation.amount),
     campaignId: donation.campaignId ?? undefined,
     donationType: donation.type,
     donationId: donation.id,
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     id: donation.id,
-    amount: donation.amount,
+    amount: Number(donation.amount),
     contactName: `${donation.contact.firstName} ${donation.contact.lastName}`,
     donorId: donation.contact.donorId,
     type: donation.type,

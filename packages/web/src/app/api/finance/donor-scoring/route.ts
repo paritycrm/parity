@@ -62,7 +62,7 @@ export async function GET() {
         }
 
         // Calculate metrics
-        const totalDonated = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
+        const totalDonated = donations.reduce((sum, d) => sum + (d.amount ? Number(d.amount) : 0), 0);
 
         const lastDonationDate =
           donations.length > 0

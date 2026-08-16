@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const regularGiftAid = giftAidClaims.reduce((sum, claim) => sum + claim.totalClaimable, 0);
+    const regularGiftAid = giftAidClaims.reduce((sum, claim) => sum + Number(claim.totalClaimable), 0);
 
     // Calculate annual limit: min(£8,000, 10 × regular Gift Aid)
     const annualLimit = Math.min(8000, regularGiftAid * 10);
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const claimedAmount = gasdsClaimsInYear.reduce((sum, claim) => sum + claim.claimAmount, 0);
+    const claimedAmount = gasdsClaimsInYear.reduce((sum, claim) => sum + Number(claim.claimAmount), 0);
 
     const remaining = Math.max(0, annualLimit - claimedAmount);
     const eligible = remaining > 0;

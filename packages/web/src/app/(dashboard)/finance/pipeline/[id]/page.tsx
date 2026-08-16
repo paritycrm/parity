@@ -129,7 +129,7 @@ export default async function OpportunityDetailPage({
                     Weighted Value
                   </label>
                   <p className="mt-1 text-lg font-semibold text-gray-900">
-                    £{(opportunity.amount * (opportunity.probability / 100)).toFixed(2)}
+                    £{(Number(opportunity.amount) * (opportunity.probability / 100)).toFixed(2)}
                   </p>
                 </div>
               </div>

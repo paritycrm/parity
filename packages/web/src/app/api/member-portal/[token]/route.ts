@@ -70,7 +70,7 @@ export async function GET(
 
     // Calculate donation summary
     const donationCount = donations.length;
-    const donationTotal = donations.reduce((sum, d) => sum + d.amount, 0);
+    const donationTotal = donations.reduce((sum, d) => sum + Number(d.amount), 0);
 
     return NextResponse.json({
       contactId: contact.id,

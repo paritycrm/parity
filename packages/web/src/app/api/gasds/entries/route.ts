@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       where: { claimId },
     });
 
-    const totalSmallDonations = entries.reduce((sum, e) => sum + e.amount, 0);
+    const totalSmallDonations = entries.reduce((sum, e) => sum + Number(e.amount), 0);
     const claimAmount = Math.round(totalSmallDonations * 0.25 * 100) / 100; // 25% rounded to 2 decimals
 
     await prisma.gasdsClaim.update({

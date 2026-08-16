@@ -186,7 +186,7 @@ export async function triggerSync(formData: FormData) {
               status: "PENDING",
               requestData: JSON.stringify({
                 donationId: donation.id,
-                amount: donation.amount,
+                amount: Number(donation.amount),
                 currency: donation.currency,
                 date: donation.date,
               }),

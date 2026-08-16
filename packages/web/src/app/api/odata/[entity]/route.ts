@@ -49,7 +49,7 @@ async function getDonations() {
     "@odata.id": `Donations('${d.id}')`,
     id: d.id,
     contactId: d.contactId,
-    amount: d.amount,
+    amount: Number(d.amount),
     date: d.date,
     type: d.type,
     status: d.status,

@@ -35,7 +35,7 @@ function generateBACSFile(
   for (const payment of payments) {
     const sortCode = (payment.sortCode || "000000").replace(/\D/g, "");
     const accountNumber = (payment.bankAccount || "00000000").replace(/\D/g, "");
-    const amount = Math.round(payment.amount * 100); // Convert to pence
+    const amount = Math.round(Number(payment.amount) * 100); // Convert to pence
     totalAmount += amount;
     paymentCount += 1;
 
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Note: Payment run tracking would be stored in Payment metadata
-    const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+    const totalAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
 
     // Update payment statuses
     await prisma.payment.updateMany({

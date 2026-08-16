@@ -52,7 +52,7 @@ export default async function PublicRegistrationPage({
       name: item.name,
       description: item.description,
       type: item.type,
-      price: item.price,
+      price: item.price ? Number(item.price) : null,
       isRequired: item.isRequired,
       isGiftAidEligible: item.isGiftAidEligible,
       maxQuantity: item.maxQuantity,

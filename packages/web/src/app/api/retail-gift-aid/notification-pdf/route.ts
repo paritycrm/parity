@@ -136,8 +136,8 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalProceeds = items.reduce((s, i) => s + i.donationAmount, 0);
-    const giftAidAmount = items.reduce((s, i) => s + i.giftAidAmount, 0);
+    const totalProceeds = items.reduce((s, i) => s + Number(i.donationAmount), 0);
+    const giftAidAmount = items.reduce((s, i) => s + Number(i.giftAidAmount), 0);
 
     const letterText = buildRetailGiftAidLetterText({
       contactName: notif.contactName,

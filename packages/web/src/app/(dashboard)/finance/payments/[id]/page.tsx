@@ -303,7 +303,7 @@ export default async function PaymentDetailPage({
                 type="number"
                 step="0.01"
                 required
-                defaultValue={payment.amount}
+                defaultValue={Number(payment.amount)}
               />
               <Select
                 label="Status"

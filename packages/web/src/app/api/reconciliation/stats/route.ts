@@ -75,8 +75,8 @@ export async function GET(req: NextRequest) {
       _sum: { amount: true },
     });
 
-    const matchedAmount = matchedTransactions.reduce((sum, t) => sum + t.amount, 0);
-    const unmatchedAmount = unmatchedTransactions.reduce((sum, t) => sum + t.amount, 0);
+    const matchedAmount = matchedTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+    const unmatchedAmount = unmatchedTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
 
     const matchRate = totalTransactions > 0
       ? Math.round((matchedCount / totalTransactions) * 100)
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
         unmatchedCount,
         excludedCount,
         matchRate,
-        totalAmount: totalAmount._sum.amount || 0,
+        totalAmount: totalAmount._sum.amount ? Number(totalAmount._sum.amount) : 0,
         matchedAmount,
         unmatchedAmount,
       },

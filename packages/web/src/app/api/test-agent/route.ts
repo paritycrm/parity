@@ -236,9 +236,9 @@ export async function POST(request: Request) {
     if (!testCampaignId) throw new Error("No campaign");
     const c = await prisma.campaign.findUnique({ where: { id: testCampaignId } });
     if (!c || !c.budgetTarget) throw new Error("Campaign missing");
-    const progress = Math.round((c.actualRaised / c.budgetTarget) * 100);
+    const progress = Math.round((Number(c.actualRaised) / Number(c.budgetTarget)) * 100);
     if (progress !== 25) throw new Error(`Expected 25% progress, got ${progress}%`);
-    return `Progress: £${c.actualRaised}/£${c.budgetTarget} = ${progress}%`;
+    return `Progress: £${Number(c.actualRaised)}/£${Number(c.budgetTarget)} = ${progress}%`;
   }));
 
   // ═══════════════════════════════════════════
@@ -410,10 +410,10 @@ export async function POST(request: Request) {
     });
     const mismatches: string[] = [];
     for (const c of campaigns) {
-      const actualFromDonations = c.donations.reduce((sum, d) => sum + d.amount, 0);
-      const diff = Math.abs(c.actualRaised - actualFromDonations);
+      const actualFromDonations = c.donations.reduce((sum, d) => sum + Number(d.amount), 0);
+      const diff = Math.abs(Number(c.actualRaised) - actualFromDonations);
       if (diff > 0.01) {
-        mismatches.push(`${c.name}: stored=£${c.actualRaised.toFixed(2)} vs donations=£${actualFromDonations.toFixed(2)}`);
+        mismatches.push(`${c.name}: stored=£${Number(c.actualRaised).toFixed(2)} vs donations=£${actualFromDonations.toFixed(2)}`);
       }
     }
     if (mismatches.length > 0) throw new Error(`Mismatches found:\n${mismatches.join("\n")}`);

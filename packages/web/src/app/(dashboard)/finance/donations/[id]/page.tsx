@@ -319,7 +319,7 @@ export default async function DonationDetailPage({
                 type="number"
                 step="0.01"
                 required
-                defaultValue={donation.amount}
+                defaultValue={Number(donation.amount)}
               />
               <Select
                 label="Currency"
