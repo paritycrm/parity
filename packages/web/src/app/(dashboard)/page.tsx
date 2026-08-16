@@ -697,7 +697,7 @@ export default async function DashboardPage({
             ) : (
               <div className="space-y-3">
                 {upcomingAssignments.map((assignment) => (
-                  <Link key={assignment.id} href={`/volunteers/${assignment.volunteer.id}`} className="flex items-center justify-between py-2 hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors">
+                  <Link key={assignment.id} href={`/crm/contacts/${assignment.volunteer.contactId}`} className="flex items-center justify-between py-2 hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors">
                     <div>
                       <p className="text-sm font-medium text-gray-900">{assignment.title}</p>
                       <p className="text-xs text-gray-500">

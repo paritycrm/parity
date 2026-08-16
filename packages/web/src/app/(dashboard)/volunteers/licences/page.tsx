@@ -99,7 +99,7 @@ export default async function LicencesPage() {
               return (
                 <tr key={licence.id} className={`border-b last:border-0 ${expired ? "bg-red-50" : ""}`}>
                   <td className="px-4 py-3">
-                    <Link href={`/volunteers/${licence.volunteer.contactId}`} className="text-indigo-600 hover:underline">
+                    <Link href={`/crm/contacts/${licence.volunteer.contactId}`} className="text-indigo-600 hover:underline">
                       {licence.volunteer.contact.firstName} {licence.volunteer.contact.lastName}
                     </Link>
                   </td>

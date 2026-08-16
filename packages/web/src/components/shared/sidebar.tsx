@@ -109,16 +109,7 @@ const sections: NavSection[] = [
       { name: "Organisations", href: "/crm/organisations", icon: Building2 },
       { name: "Segments", href: "/crm/segments", icon: Zap },
       { name: "Duplicates", href: "/crm/duplicates", icon: Merge },
-    ],
-  },
-
-  // ─── Volunteers ───
-  {
-    label: "Volunteers",
-    icon: UserCheck,
-    roles: ALL_STAFF,
-    items: [
-      { name: "All Volunteers", href: "/volunteers", icon: UserCheck },
+      { name: "Volunteers", href: "/volunteers", icon: UserCheck },
       { name: "Hours", href: "/volunteers/hours", icon: Clock },
       { name: "Training", href: "/volunteers/training", icon: GraduationCap },
       { name: "Departments", href: "/volunteers/departments", icon: Building2 },

@@ -301,7 +301,7 @@ export default async function TrainingCourseDetailPage({
                   <tr key={vt.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <Link
-                        href={`/volunteers/${vt.volunteerId}`}
+                        href={`/crm/contacts/${vt.volunteer.contactId}`}
                         className="text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline"
                       >
                         {vt.volunteer.contact.firstName} {vt.volunteer.contact.lastName}

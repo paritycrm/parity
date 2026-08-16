@@ -77,7 +77,7 @@ export default async function NewVolunteerPage() {
       );
     }
 
-    redirect(startOnboarding ? "/volunteers/onboarding" : `/volunteers/${volunteer.id}`);
+    redirect(startOnboarding ? "/volunteers/onboarding" : `/crm/contacts/${contact.id}`);
   }
 
   return (

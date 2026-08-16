@@ -285,7 +285,7 @@ export default async function HoursPage({
                   <tr key={log.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <Link
-                        href={`/volunteers/${log.volunteerId}`}
+                        href={`/crm/contacts/${log.volunteer.contactId}`}
                         className="text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline"
                       >
                         {log.volunteer.contact.firstName} {log.volunteer.contact.lastName}

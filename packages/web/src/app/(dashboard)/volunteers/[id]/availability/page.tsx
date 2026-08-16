@@ -106,7 +106,7 @@ export default async function AvailabilityPage({
       {/* Header */}
       <div>
         <Link
-          href={`/volunteers/${id}`}
+          href={`/crm/contacts/${volunteer.contactId}`}
           className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2"
         >
           <ArrowLeft className="h-4 w-4" />

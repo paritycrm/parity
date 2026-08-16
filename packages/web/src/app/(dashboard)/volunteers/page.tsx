@@ -129,9 +129,9 @@ export default async function VolunteersPage({
         <EmptyState
           icon={UserCheck}
           title="No volunteers found"
-          description="Start building your volunteer team."
-          actionLabel="Add Volunteer"
-          actionHref="/volunteers/new"
+          description="Start building your volunteer team. Add a contact and mark them as a volunteer."
+          actionLabel="Add Contact"
+          actionHref="/crm/contacts"
         />
       ) : (
         <>
@@ -139,7 +139,7 @@ export default async function VolunteersPage({
             {volunteers.map((vol) => {
               const totalHours = vol.hoursLogs.reduce((sum, log) => sum + log.hours, 0);
               return (
-                <Link key={vol.id} href={`/volunteers/${vol.id}`}>
+                <Link key={vol.id} href={`/crm/contacts/${vol.contactId}`}>
                   <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
                     <div className="flex items-start gap-3">
                       <Avatar firstName={vol.contact.firstName} lastName={vol.contact.lastName} />

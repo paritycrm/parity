@@ -69,7 +69,7 @@ export default async function AssignmentsPage() {
                 {assignments.map((a) => (
                   <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
-                      <Link href={`/volunteers/${a.volunteerId}`} className="flex items-center gap-2 hover:underline">
+                      <Link href={`/crm/contacts/${a.volunteer.contactId}`} className="flex items-center gap-2 hover:underline">
                         <Avatar firstName={a.volunteer.contact.firstName} lastName={a.volunteer.contact.lastName} size="sm" />
                         <span className="text-sm font-medium text-gray-900">
                           {a.volunteer.contact.firstName} {a.volunteer.contact.lastName}

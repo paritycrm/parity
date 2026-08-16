@@ -233,17 +233,19 @@ export default async function ContactDetailPage({
       where: { contactId: id },
     });
     if (existing) {
-      redirect(`/volunteers/${existing.id}`);
+      revalidatePath(`/crm/contacts/${id}`);
+      redirect(`/crm/contacts/${id}`);
       return;
     }
 
-    const profile = await prisma.volunteerProfile.create({
+    await prisma.volunteerProfile.create({
       data: {
         contactId: id,
         status: "ACTIVE",
       },
     });
-    redirect(`/volunteers/${profile.id}`);
+    revalidatePath(`/crm/contacts/${id}`);
+    redirect(`/crm/contacts/${id}`);
   }
 
   async function addRelationship(formData: FormData) {
@@ -1124,21 +1126,15 @@ export default async function ContactDetailPage({
                   </div>
 
                   {/* Quick links */}
-                  <div className="flex gap-2 mt-2">
-                    {contact.volunteerProfile ? (
-                      <Link href={`/volunteers/${contact.volunteerProfile.id}`}>
-                        <Badge className="bg-indigo-100 text-indigo-800 cursor-pointer hover:bg-indigo-200">
-                          View Volunteer Profile &rarr;
-                        </Badge>
-                      </Link>
-                    ) : contact.types.includes("VOLUNTEER") ? (
+                  {!contact.volunteerProfile && contact.types.includes("VOLUNTEER") && (
+                    <div className="flex gap-2 mt-2">
                       <form action={createVolunteerProfile}>
                         <button type="submit" className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors">
                           <Plus className="h-3 w-3" /> Create Volunteer Profile
                         </button>
                       </form>
-                    ) : null}
-                  </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <form action={toggleArchive}>
@@ -1226,9 +1222,9 @@ export default async function ContactDetailPage({
                   "bg-gray-100 text-gray-800"
                 }>{contact.volunteerProfile.status}</Badge>
               </div>
-              <Link href={`/volunteers/${contact.volunteerProfile.id}`} className="text-sm text-indigo-600 hover:underline font-medium">
-                View Full Profile &rarr;
-              </Link>
+              <Badge className="bg-indigo-100 text-indigo-800 text-xs">
+                Volunteer
+              </Badge>
             </div>
           </CardHeader>
           <CardContent>

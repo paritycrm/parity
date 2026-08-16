@@ -159,7 +159,7 @@ export default async function DBSPage({
               return (
                 <tr key={check.id} className={`border-b last:border-0 ${rowBg}`}>
                   <td className="px-4 py-3">
-                    <Link href={`/volunteers/${check.volunteer.contactId}`} className="text-indigo-600 hover:underline">
+                    <Link href={`/crm/contacts/${check.volunteer.contactId}`} className="text-indigo-600 hover:underline">
                       {check.volunteer.contact.firstName} {check.volunteer.contact.lastName}
                     </Link>
                   </td>

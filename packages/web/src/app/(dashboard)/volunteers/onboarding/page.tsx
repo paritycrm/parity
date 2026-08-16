@@ -86,7 +86,7 @@ export default async function OnboardingPage() {
             {needsOnboarding.map(v => (
               <div key={v.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                 <div>
-                  <Link href={`/volunteers/${v.id}`} className="font-medium text-indigo-600 hover:underline">
+                  <Link href={`/crm/contacts/${v.contactId}`} className="font-medium text-indigo-600 hover:underline">
                     {v.contact.firstName} {v.contact.lastName}
                   </Link>
                   <p className="text-sm text-gray-500">Applied {formatDate(v.createdAt)}</p>
@@ -111,7 +111,7 @@ export default async function OnboardingPage() {
           return (
             <Card key={volunteer.id} className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <Link href={`/volunteers/${volunteer.id}`} className="font-semibold text-lg text-indigo-600 hover:underline">
+                <Link href={`/crm/contacts/${volunteer.contactId}`} className="font-semibold text-lg text-indigo-600 hover:underline">
                   {volunteer.contact.firstName} {volunteer.contact.lastName}
                 </Link>
                 <Badge className={
