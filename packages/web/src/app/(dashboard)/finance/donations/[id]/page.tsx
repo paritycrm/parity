@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Edit2 } from "lucide-react";
+import { ArrowLeft, Trash2, Edit2, Plus, Users } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ export default async function DonationDetailPage({
       event: true,
       ledgerCode: true,
       createdBy: true,
+      softCredits: { include: { contact: true }, orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -129,6 +130,40 @@ export default async function DonationDetailPage({
     revalidatePath("/finance/donations");
     if (existing?.campaignId) revalidatePath(`/campaigns/${existing.campaignId}`);
     redirect("/finance/donations");
+  }
+
+  async function addSoftCredit(formData: FormData) {
+    "use server";
+    const session = await requireAuth();
+
+    const contactId = formData.get("contactId") as string;
+    const amount = parseFloat(formData.get("amount") as string);
+    const notes = (formData.get("notes") as string) || null;
+
+    if (!contactId || isNaN(amount) || amount <= 0) return;
+
+    await prisma.softCredit.create({
+      data: {
+        donationId: id,
+        contactId,
+        amount,
+        notes,
+      },
+    });
+
+    await logAudit({ userId: session.id, action: "CREATE", entityType: "SoftCredit", entityId: id, details: { donationId: id, contactId, amount } });
+    revalidatePath(`/finance/donations/${id}`);
+  }
+
+  async function deleteSoftCredit(formData: FormData) {
+    "use server";
+    const session = await requireAuth();
+
+    const softCreditId = formData.get("softCreditId") as string;
+    await prisma.softCredit.delete({ where: { id: softCreditId } });
+
+    await logAudit({ userId: session.id, action: "DELETE", entityType: "SoftCredit", entityId: softCreditId, details: { donationId: id } });
+    revalidatePath(`/finance/donations/${id}`);
   }
 
   const typeColors: Record<string, string> = {
@@ -422,6 +457,91 @@ export default async function DonationDetailPage({
             <Button type="submit">
               <Edit2 className="h-4 w-4 mr-2" />
               Save Changes
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Soft Credits */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-indigo-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Soft Credits</h3>
+            {donation.softCredits.length > 0 && (
+              <span className="ml-1 rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-xs font-medium">
+                {donation.softCredits.length}
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Existing soft credits */}
+          {donation.softCredits.length > 0 ? (
+            <div className="space-y-2 mb-6 pb-6 border-b border-gray-100">
+              {donation.softCredits.map((sc: any) => (
+                <div key={sc.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/crm/contacts/${sc.contact.id}`}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      {sc.contact.firstName} {sc.contact.lastName}
+                    </Link>
+                    <span className="text-sm font-semibold text-gray-900">
+                      &pound;{Number(sc.amount).toFixed(2)}
+                    </span>
+                    {sc.notes && (
+                      <span className="text-xs text-gray-500">{sc.notes}</span>
+                    )}
+                  </div>
+                  <form action={deleteSoftCredit}>
+                    <input type="hidden" name="softCreditId" value={sc.id} />
+                    <ConfirmButton message="Remove this soft credit?" variant="ghost" size="sm" className="text-red-500 text-xs">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </ConfirmButton>
+                  </form>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100">
+              No soft credits recorded. Use the form below to credit another contact for this donation.
+            </p>
+          )}
+
+          {/* Add soft credit form */}
+          <form action={addSoftCredit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
+                <SearchableSelect
+                  name="contactId"
+                  required
+                  placeholder="Search contacts..."
+                  options={contacts.map((contact) => ({
+                    value: contact.id,
+                    label: `${contact.firstName} ${contact.lastName}`,
+                  }))}
+                />
+              </div>
+              <Input
+                label="Amount"
+                name="amount"
+                type="number"
+                step="0.01"
+                required
+                defaultValue={Number(donation.amount)}
+              />
+            </div>
+            <Input
+              label="Notes"
+              name="notes"
+              placeholder="e.g. solicited by this contact"
+            />
+            <Button type="submit" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Soft Credit
             </Button>
           </form>
         </CardContent>

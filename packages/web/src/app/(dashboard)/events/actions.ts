@@ -121,6 +121,7 @@ export async function addSponsor(formData: FormData) {
   const amount = formData.get("amount") ? parseFloat(formData.get("amount") as string) : null;
   const logoUrl = (formData.get("logoUrl") as string) || null;
   const notes = (formData.get("notes") as string) || null;
+  const organisationId = (formData.get("organisationId") as string) || null;
 
   await prisma.eventSponsor.create({
     data: {
@@ -130,6 +131,7 @@ export async function addSponsor(formData: FormData) {
       amount,
       logoUrl,
       notes,
+      organisationId,
     },
   });
 

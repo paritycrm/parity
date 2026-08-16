@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowLeft, Download, FileSpreadsheet, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 interface ExportDonation {
   id: string;
@@ -18,6 +17,7 @@ interface ExportDonation {
   ledgerCode: string | null;
   ledgerName: string | null;
   campaignName: string | null;
+  eventName: string | null;
   bankDocRef: string | null;
   isGiftAidable: boolean;
 }
@@ -43,21 +43,29 @@ export default function DailyExportPage() {
     setLoading(false);
   }
 
+  function buildDetails(d: ExportDonation) {
+    let detail = `${d.contactName} - ${d.type}`;
+    if (d.method) detail += ` (${d.method})`;
+    if (d.campaignName) detail += ` [${d.campaignName}]`;
+    if (d.eventName) detail += ` [${d.eventName}]`;
+    return detail;
+  }
+
   function downloadCSV() {
-    // Sage 50 compatible CSV format
+    // Sage 50 Bank Receipt CSV format
     const headers = [
       "Type", "Account Ref", "Nominal A/C Ref", "Department",
       "Date", "Reference", "Details", "Net Amount", "Tax Code", "Tax Amount",
     ];
 
     const rows = donations.map((d) => [
-      "SI", // Sales Invoice type for Sage
-      "1200", // Default bank account code
-      d.ledgerCode || "4000", // Nominal code - default to 4000 (Sales)
+      "BR", // Bank Receipt for Sage 50 (donations/income received)
+      "1200", // Default bank current account code
+      d.ledgerCode || "4000", // Nominal code - default to 4000 (Sales/Income)
       "0", // Department
       formatDateSage(d.date),
       d.bankDocRef || d.reference || "",
-      `${d.contactName} - ${d.type}${d.campaignName ? ` (${d.campaignName})` : ""}`,
+      buildDetails(d),
       d.amount.toFixed(2),
       d.isGiftAidable ? "T1" : "T0",
       "0.00",
@@ -147,7 +155,7 @@ export default function DailyExportPage() {
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ledger</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Campaign</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Campaign / Event</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bank Doc</th>
                       <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
                       <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">GA</th>
@@ -161,7 +169,7 @@ export default function DailyExportPage() {
                         <td className="px-4 py-3 text-sm text-gray-600">{d.method || "—"}</td>
                         <td className="px-4 py-3 text-sm text-gray-600 font-mono">{d.reference || "—"}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{d.ledgerCode || "—"}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{d.campaignName || "—"}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{d.campaignName || d.eventName || "—"}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{d.bankDocRef || "—"}</td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">£{d.amount.toFixed(2)}</td>
                         <td className="px-4 py-3 text-center">

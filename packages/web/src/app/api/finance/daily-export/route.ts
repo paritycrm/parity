@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
       contact: { select: { firstName: true, lastName: true } },
       ledgerCode: { select: { code: true, name: true } },
       campaign: { select: { name: true } },
+      event: { select: { name: true } },
       bankDocument: { select: { reference: true } },
     },
     orderBy: { createdAt: "asc" },
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
     ledgerCode: d.ledgerCode?.code || null,
     ledgerName: d.ledgerCode?.name || null,
     campaignName: d.campaign?.name || null,
+    eventName: d.event?.name || null,
     bankDocRef: d.bankDocument?.reference || null,
     isGiftAidable: d.isGiftAidable,
   }));

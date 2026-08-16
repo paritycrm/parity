@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { GraduationCap, Plus, Trash2, Building } from "lucide-react";
+import { GraduationCap, Plus, Trash2, Building, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 export default async function TrainingPage() {
   await requireAuth();
 
-  const [courses, overdueCourses] = await Promise.all([
+  const now = new Date();
+  const oneMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const threeMonths = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const sixMonths = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+
+  const [courses, overdueCourses, expiringTrainings] = await Promise.all([
     prisma.trainingCourse.findMany({
       include: {
         _count: { select: { volunteerTrainings: true } },
@@ -38,7 +43,30 @@ export default async function TrainingPage() {
       orderBy: { expiryDate: "asc" },
       take: 100,
     }),
+    // Training expiring in next 6 months
+    prisma.volunteerTraining.findMany({
+      where: {
+        status: "COMPLETED",
+        expiryDate: {
+          gte: now,
+          lte: sixMonths,
+        },
+      },
+      include: {
+        volunteer: { include: { contact: true } },
+        course: true,
+      },
+      orderBy: { expiryDate: "asc" },
+    }),
   ]);
+
+  const expiring1m = expiringTrainings.filter(t => t.expiryDate && t.expiryDate <= oneMonth);
+  const expiring3m = expiringTrainings.filter(t => t.expiryDate && t.expiryDate > oneMonth && t.expiryDate <= threeMonths);
+  const expiring6m = expiringTrainings.filter(t => t.expiryDate && t.expiryDate > threeMonths && t.expiryDate <= sixMonths);
+
+  function daysUntilExpiry(expiryDate: Date): number {
+    return Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  }
 
   async function createCourse(formData: FormData) {
     "use server";
@@ -252,6 +280,65 @@ export default async function TrainingPage() {
               </tbody>
             </table>
           </div>
+        </Card>
+      )}
+
+      {/* Coming Up - Training Expiring Soon */}
+      {(expiring1m.length > 0 || expiring3m.length > 0 || expiring6m.length > 0) && (
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="h-5 w-5 text-amber-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Coming Up</h2>
+            <span className="text-sm text-gray-500">Training certifications expiring in the next 6 months</span>
+          </div>
+
+          {[
+            { label: "Within 1 Month", items: expiring1m, color: "border-l-red-500", textColor: "text-red-600" },
+            { label: "1 - 3 Months", items: expiring3m, color: "border-l-orange-500", textColor: "text-orange-600" },
+            { label: "3 - 6 Months", items: expiring6m, color: "border-l-yellow-500", textColor: "text-yellow-600" },
+          ].map(group => group.items.length > 0 && (
+            <div key={group.label} className="mb-4 last:mb-0">
+              <h3 className={`text-sm font-semibold ${group.textColor} mb-2`}>
+                {group.label} ({group.items.length})
+              </h3>
+              <div className={`border-l-4 ${group.color} bg-gray-50 rounded-r-lg overflow-hidden`}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Volunteer</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Course</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Completed</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Expiry Date</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Days Left</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.items.map(training => (
+                      <tr key={training.id} className="border-b border-gray-100 last:border-0">
+                        <td className="px-4 py-2">
+                          <Link href={`/crm/contacts/${training.volunteer.contactId}`} className="text-indigo-600 hover:underline font-medium">
+                            {training.volunteer.contact.firstName} {training.volunteer.contact.lastName}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">{training.course.name}</td>
+                        <td className="px-4 py-2 text-gray-500">
+                          {training.completedDate ? formatDate(training.completedDate) : "---"}
+                        </td>
+                        <td className="px-4 py-2">{training.expiryDate ? formatDate(training.expiryDate) : "---"}</td>
+                        <td className="px-4 py-2">
+                          {training.expiryDate && (
+                            <Badge className={daysUntilExpiry(training.expiryDate) <= 30 ? "bg-red-100 text-red-800" : daysUntilExpiry(training.expiryDate) <= 90 ? "bg-orange-100 text-orange-800" : "bg-yellow-100 text-yellow-800"}>
+                              {daysUntilExpiry(training.expiryDate)}d
+                            </Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </Card>
       )}
 

@@ -18,6 +18,7 @@ import {
   Ticket,
   Phone,
   Mail,
+  Shield,
 } from "lucide-react";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -124,6 +125,8 @@ export default async function DashboardPage({
   let upcomingAssignments: any[] = [];
   let contactsWithPhone = 0;
   let contactsWithEmail = 0;
+  let dbsExpiredCount = 0;
+  let dbsExpiring30Count = 0;
 
   try {
     [
@@ -151,6 +154,8 @@ export default async function DashboardPage({
       upcomingAssignments,
       contactsWithPhone,
       contactsWithEmail,
+      dbsExpiredCount,
+      dbsExpiring30Count,
     ] = await Promise.all([
       // ── Always-current counts ────────────────────────────
       prisma.contact.count(),
@@ -292,6 +297,23 @@ export default async function DashboardPage({
       prisma.contact.count({
         where: { status: "ACTIVE", email: { not: null }, NOT: { email: "" } },
       }),
+
+      // DBS: expired checks
+      prisma.dBSCheck.count({
+        where: {
+          expiryDate: { lt: new Date() },
+          status: { not: "EXPIRED" },
+        },
+      }),
+      // DBS: expiring in 30 days
+      prisma.dBSCheck.count({
+        where: {
+          expiryDate: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+        },
+      }),
     ]);
   } catch (err) {
     console.error("Dashboard data fetch error:", err);
@@ -406,7 +428,7 @@ export default async function DashboardPage({
       </div>
 
       {/* Counts Row — always current */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <StatCard title="Total Contacts" value={contactCount} icon={Users} href="/crm/contacts" />
         <StatCard title="Volunteers" value={volunteerCount} icon={UserCheck} href="/volunteers" />
         <StatCard title="Lottery Members" value={lotteryMembers} icon={Ticket} href="/crm/contacts?lottery=yes" />
@@ -416,6 +438,14 @@ export default async function DashboardPage({
           value={upcomingEvents.length}
           icon={Calendar}
           href="/events"
+        />
+        <StatCard
+          title="DBS Alerts"
+          value={dbsExpiredCount + dbsExpiring30Count}
+          icon={Shield}
+          trend={dbsExpiredCount > 0 ? `${dbsExpiredCount} expired, ${dbsExpiring30Count} expiring` : `${dbsExpiring30Count} expiring in 30d`}
+          trendUp={dbsExpiredCount + dbsExpiring30Count === 0 ? true : false}
+          href="/volunteers/dbs"
         />
       </div>
 

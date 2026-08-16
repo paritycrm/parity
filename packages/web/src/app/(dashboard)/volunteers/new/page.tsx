@@ -52,6 +52,36 @@ export default async function NewVolunteerPage() {
       },
     });
 
+    // Auto-assign mandatory training for selected departments
+    if (deptIds.length > 0) {
+      const deptTrainings = await prisma.departmentTraining.findMany({
+        where: { departmentId: { in: deptIds } },
+        select: { courseId: true },
+      });
+      const uniqueCourseIds = [...new Set(deptTrainings.map(dt => dt.courseId))];
+      if (uniqueCourseIds.length > 0) {
+        // Check which trainings already exist (shouldn't be any for a new volunteer, but safe)
+        const existingTrainings = await prisma.volunteerTraining.findMany({
+          where: {
+            volunteerId: volunteer.id,
+            courseId: { in: uniqueCourseIds },
+          },
+          select: { courseId: true },
+        });
+        const existingCourseIds = new Set(existingTrainings.map(t => t.courseId));
+        const newCourseIds = uniqueCourseIds.filter(id => !existingCourseIds.has(id));
+        if (newCourseIds.length > 0) {
+          await prisma.volunteerTraining.createMany({
+            data: newCourseIds.map(courseId => ({
+              volunteerId: volunteer.id,
+              courseId,
+              status: "NOT_STARTED",
+            })),
+          });
+        }
+      }
+    }
+
     // Auto-start onboarding workflow if requested
     if (startOnboarding) {
       const ONBOARDING_STEPS = [

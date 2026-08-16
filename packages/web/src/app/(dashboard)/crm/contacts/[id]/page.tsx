@@ -45,6 +45,7 @@ export default async function ContactDetailPage({
       },
       giftAids: { orderBy: { createdAt: "desc" }, take: 5 },
       donations: { include: { campaign: true, event: true }, orderBy: { date: "desc" } },
+      softCredits: { include: { donation: { include: { contact: true } } }, orderBy: { createdAt: "desc" } },
       eventAttendees: { include: { event: true }, orderBy: { createdAt: "desc" }, take: 5 },
       eventOrders: { include: { event: true, lineItems: { include: { item: true } } }, orderBy: { createdAt: "desc" }, take: 5 },
       fundraisingPages: {
@@ -970,6 +971,46 @@ export default async function ContactDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Soft Credits */}
+      {contact.softCredits.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Soft Credits</h3>
+              </div>
+              <span className="text-sm text-gray-500">{contact.softCredits.length} total</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-gray-500 mb-3">Donations where this contact received soft credit</p>
+            <div className="space-y-2">
+              {contact.softCredits.map((sc: any) => (
+                <Link
+                  key={sc.id}
+                  href={`/finance/donations/${sc.donation.id}`}
+                  className="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg -mx-1"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      Donation by {sc.donation.contact.firstName} {sc.donation.contact.lastName}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {formatDate(sc.donation.date)}
+                      {sc.notes && <span className="ml-2 text-gray-400">{sc.notes}</span>}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900">
+                    &pound;{Number(sc.amount).toFixed(2)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 

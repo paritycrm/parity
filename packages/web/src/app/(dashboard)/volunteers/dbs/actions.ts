@@ -57,3 +57,39 @@ export async function updateDBSStatus(formData: FormData) {
 
   revalidatePath("/volunteers/dbs");
 }
+
+export async function createDBSReminder(formData: FormData) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const volunteerId = formData.get("volunteerId") as string;
+  const volunteerName = formData.get("volunteerName") as string;
+  const expiryDate = formData.get("expiryDate") as string;
+  const certificateNumber = formData.get("certificateNumber") as string;
+
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+  await prisma.reminder.create({
+    data: {
+      volunteerId,
+      type: "DBS_EXPIRY",
+      title: `DBS Check Expiring - ${volunteerName}`,
+      message: `DBS certificate ${certificateNumber || "(no number)"} expires on ${expiry.toLocaleDateString("en-GB")} (${daysUntil} days). Please arrange renewal.`,
+      triggerDate: new Date(),
+      isAutomatic: false,
+      createdById: session.id,
+    },
+  });
+
+  await logAudit({
+    userId: session.id,
+    action: "CREATE",
+    entityType: "Reminder",
+    entityId: volunteerId,
+    details: { type: "DBS_EXPIRY", volunteerName },
+  });
+
+  revalidatePath("/volunteers/dbs");
+}

@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Shield, Plus } from "lucide-react";
+import { Shield, Plus, Bell, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/utils";
-import { addDBSCheck, updateDBSStatus } from "./actions";
+import { addDBSCheck, updateDBSStatus, createDBSReminder } from "./actions";
 
 export default async function DBSPage({
   searchParams,
@@ -19,6 +19,9 @@ export default async function DBSPage({
   const now = new Date();
   const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const ninetyDays = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const oneMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const threeMonths = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const sixMonths = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
 
   const checks = await prisma.dBSCheck.findMany({
     where: statusFilter ? { status: statusFilter } : {},
@@ -32,6 +35,15 @@ export default async function DBSPage({
   const expiringIn30 = checks.filter(c => c.expiryDate >= now && c.expiryDate <= thirtyDays);
   const expiringIn90 = checks.filter(c => c.expiryDate > thirtyDays && c.expiryDate <= ninetyDays);
   const cleared = checks.filter(c => c.status === "CLEARED" && c.expiryDate > ninetyDays);
+
+  // Coming Up report groups
+  const comingUp1m = checks.filter(c => c.expiryDate >= now && c.expiryDate <= oneMonth);
+  const comingUp3m = checks.filter(c => c.expiryDate > oneMonth && c.expiryDate <= threeMonths);
+  const comingUp6m = checks.filter(c => c.expiryDate > threeMonths && c.expiryDate <= sixMonths);
+
+  function daysUntilExpiry(expiryDate: Date): number {
+    return Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  }
 
   const volunteers = await prisma.volunteerProfile.findMany({
     where: { status: "ACTIVE" },
@@ -124,6 +136,72 @@ export default async function DBSPage({
           </div>
         </form>
       </Card>
+
+      {/* Coming Up Report */}
+      {(comingUp1m.length > 0 || comingUp3m.length > 0 || comingUp6m.length > 0) && (
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="h-5 w-5 text-amber-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Coming Up</h2>
+            <span className="text-sm text-gray-500">DBS checks expiring in the next 6 months</span>
+          </div>
+
+          {[
+            { label: "Within 1 Month", items: comingUp1m, color: "border-l-red-500", textColor: "text-red-600" },
+            { label: "1 - 3 Months", items: comingUp3m, color: "border-l-orange-500", textColor: "text-orange-600" },
+            { label: "3 - 6 Months", items: comingUp6m, color: "border-l-yellow-500", textColor: "text-yellow-600" },
+          ].map(group => group.items.length > 0 && (
+            <div key={group.label} className="mb-4 last:mb-0">
+              <h3 className={`text-sm font-semibold ${group.textColor} mb-2`}>
+                {group.label} ({group.items.length})
+              </h3>
+              <div className={`border-l-4 ${group.color} bg-gray-50 rounded-r-lg overflow-hidden`}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Volunteer</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Certificate</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Expiry Date</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Days Left</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-500">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.items.map(check => (
+                      <tr key={check.id} className="border-b border-gray-100 last:border-0">
+                        <td className="px-4 py-2">
+                          <Link href={`/crm/contacts/${check.volunteer.contactId}`} className="text-indigo-600 hover:underline font-medium">
+                            {check.volunteer.contact.firstName} {check.volunteer.contact.lastName}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-2 font-mono text-xs">{check.certificateNumber || "---"}</td>
+                        <td className="px-4 py-2">{formatDate(check.expiryDate)}</td>
+                        <td className="px-4 py-2">
+                          <Badge className={daysUntilExpiry(check.expiryDate) <= 30 ? "bg-red-100 text-red-800" : daysUntilExpiry(check.expiryDate) <= 90 ? "bg-orange-100 text-orange-800" : "bg-yellow-100 text-yellow-800"}>
+                            {daysUntilExpiry(check.expiryDate)}d
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-2">
+                          <form action={createDBSReminder} className="inline">
+                            <input type="hidden" name="volunteerId" value={check.volunteerId} />
+                            <input type="hidden" name="volunteerName" value={`${check.volunteer.contact.firstName} ${check.volunteer.contact.lastName}`} />
+                            <input type="hidden" name="expiryDate" value={check.expiryDate.toISOString()} />
+                            <input type="hidden" name="certificateNumber" value={check.certificateNumber || ""} />
+                            <Button type="submit" size="sm" variant="outline" className="gap-1">
+                              <Bell className="h-3 w-3" />
+                              Send Reminder
+                            </Button>
+                          </form>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
 
       {/* Filter buttons */}
       <div className="flex gap-1">
