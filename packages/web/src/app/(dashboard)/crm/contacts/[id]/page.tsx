@@ -42,7 +42,7 @@ export default async function ContactDetailPage({
           trainings: { include: { course: true }, orderBy: { createdAt: "desc" as const } },
           dbsChecks: { orderBy: { createdAt: "desc" as const } },
           drivingLicence: true,
-          onboardingSteps: { orderBy: { order: "asc" as const } },
+          onboardingSteps: { orderBy: { createdAt: "asc" as const } },
         },
       },
       giftAids: { orderBy: { createdAt: "desc" }, take: 5 },
@@ -1617,9 +1617,9 @@ export default async function ContactDetailPage({
                     {contact.volunteerProfile.onboardingSteps.map((step: any) => (
                       <div key={step.id} className="flex items-center gap-3 py-2">
                         <div className={`h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${step.completedAt ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-                          {step.completedAt ? "✓" : step.order}
+                          {step.completedAt ? "✓" : "○"}
                         </div>
-                        <span className={`text-sm ${step.completedAt ? "text-gray-900" : "text-gray-500"}`}>{step.name}</span>
+                        <span className={`text-sm ${step.completedAt ? "text-gray-900" : "text-gray-500"}`}>{step.stepName.replace(/_/g, " ")}</span>
                         {step.completedAt && <span className="text-xs text-gray-400 ml-auto">{formatDate(step.completedAt)}</span>}
                       </div>
                     ))}
