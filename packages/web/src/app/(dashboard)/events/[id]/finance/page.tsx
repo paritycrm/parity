@@ -161,7 +161,7 @@ export default async function EventFinancePage({
                 name="incomeTarget"
                 type="number"
                 step="0.01"
-                defaultValue={finance?.incomeTarget || ""}
+                defaultValue={finance?.incomeTarget ? Number(finance.incomeTarget) : ""}
                 placeholder="0.00"
               />
               <Input
@@ -169,7 +169,7 @@ export default async function EventFinancePage({
                 name="costTarget"
                 type="number"
                 step="0.01"
-                defaultValue={finance?.costTarget || ""}
+                defaultValue={finance?.costTarget ? Number(finance.costTarget) : ""}
                 placeholder="0.00"
               />
               <Input
@@ -177,7 +177,7 @@ export default async function EventFinancePage({
                 name="profitTarget"
                 type="number"
                 step="0.01"
-                defaultValue={finance?.profitTarget || ""}
+                defaultValue={finance?.profitTarget ? Number(finance.profitTarget) : ""}
                 placeholder="0.00"
               />
             </div>
