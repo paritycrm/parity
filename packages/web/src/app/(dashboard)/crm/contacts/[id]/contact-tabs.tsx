@@ -114,7 +114,7 @@ export function ContactTabs({
     },
     {
       id: "skills",
-      label: "Skills & Depts",
+      label: "Skills",
       icon: <Wrench className="h-4 w-4" />,
       group: "volunteer",
     },
@@ -161,7 +161,7 @@ export function ContactTabs({
   return (
     <div>
       <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex gap-8" aria-label="Contact tabs">
+        <nav className="-mb-px flex gap-6" aria-label="Contact tabs">
           {allTabs.map((tab, index) => {
             const isActive = activeTab === tab.id;
             // Insert a visual divider before the first volunteer tab
@@ -174,12 +174,12 @@ export function ContactTabs({
             return (
               <div key={tab.id} className="flex items-center">
                 {showDivider && (
-                  <div className="h-6 w-px bg-gray-300 mr-8" aria-hidden="true" />
+                  <div className="h-6 w-px bg-gray-300 mr-6" aria-hidden="true" />
                 )}
                 <button
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    flex items-center gap-2 py-3 px-1 text-sm font-medium border-b-2 transition-colors
+                    flex items-center gap-2 py-3 px-1 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                     ${tabButtonClass(tab, isActive)}
                   `}
                 >
