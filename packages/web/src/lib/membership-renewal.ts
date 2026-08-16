@@ -109,7 +109,7 @@ export async function getUpcomingRenewals(days: number): Promise<
     id: m.id,
     memberNumber: m.memberNumber,
     contact: m.contact,
-    membershipType: m.membershipType,
+    membershipType: { ...m.membershipType, price: Number(m.membershipType.price) },
     endDate: m.endDate,
     autoRenew: m.autoRenew,
     daysUntilRenewal: Math.ceil(

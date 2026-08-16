@@ -93,7 +93,7 @@ async function findMatchCandidates(
     ...exactMatches.map((d) => ({
       id: d.id,
       type: "DONATION" as const,
-      amount: d.amount,
+      amount: Number(d.amount),
       date: d.date,
       description: d.notes,
       contact: d.contact,
@@ -119,7 +119,7 @@ async function findMatchCandidates(
     ...paymentMatches.map((p) => ({
       id: p.id,
       type: "PAYMENT" as const,
-      amount: p.amount,
+      amount: Number(p.amount),
       date: p.paidAt || new Date(),
       description: p.description,
       contact: p.contact,
@@ -150,7 +150,7 @@ async function findMatchCandidates(
         candidates.push({
           id: d.id,
           type: "DONATION",
-          amount: d.amount,
+          amount: Number(d.amount),
           date: d.date,
           description: d.notes,
           contact: d.contact,
@@ -187,7 +187,7 @@ async function findMatchCandidates(
       candidates.push({
         id: d.id,
         type: "DONATION",
-        amount: d.amount,
+        amount: Number(d.amount),
         date: d.date,
         description: d.notes,
         contact: d.contact,

@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     const bacsData = generateBACSFile(
       payments.map((p) => ({
         id: p.id,
-        amount: p.amount,
+        amount: Number(p.amount),
         contactName: `${p.contact?.firstName || ""} ${p.contact?.lastName || ""}`.trim(),
         reference: p.description || undefined,
       }))

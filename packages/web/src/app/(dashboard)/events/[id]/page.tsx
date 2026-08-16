@@ -245,7 +245,7 @@ export default async function EventDetailPage({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {event.fundraisingPages.map((fp: { id: string; pageUrl: string; pageSlug: string; title: string | null; totalRaised: number; giftAidTotal: number; platform: string; contact: { id: string; firstName: string; lastName: string } }) => (
+              {event.fundraisingPages.map((fp: any) => (
                 <div key={fp.id} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                   <div>
                     <div className="flex items-center gap-2">

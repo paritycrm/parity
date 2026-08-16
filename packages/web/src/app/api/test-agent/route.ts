@@ -140,8 +140,8 @@ export async function POST(request: Request) {
     if (!testCampaignId) throw new Error("No campaign");
     const c = await prisma.campaign.findUnique({ where: { id: testCampaignId } });
     if (!c) throw new Error("Campaign not found");
-    if (c.budgetTarget !== 1000) throw new Error(`Expected target 1000, got ${c.budgetTarget}`);
-    if (c.actualRaised !== 0) throw new Error(`Expected actualRaised 0, got ${c.actualRaised}`);
+    if (Number(c.budgetTarget) !== 1000) throw new Error(`Expected target 1000, got ${c.budgetTarget}`);
+    if (Number(c.actualRaised) !== 0) throw new Error(`Expected actualRaised 0, got ${c.actualRaised}`);
     return `Campaign: ${c.name}, target £${c.budgetTarget}, raised £${c.actualRaised}`;
   }));
 
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
     if (!testCampaignId) throw new Error("No campaign");
     const c = await prisma.campaign.findUnique({ where: { id: testCampaignId } });
     if (!c) throw new Error("Campaign not found");
-    if (c.actualRaised !== 250) throw new Error(`Expected actualRaised=250, got ${c.actualRaised}`);
+    if (Number(c.actualRaised) !== 250) throw new Error(`Expected actualRaised=250, got ${c.actualRaised}`);
     return `Campaign actualRaised = £${c.actualRaised} (correct)`;
   }));
 

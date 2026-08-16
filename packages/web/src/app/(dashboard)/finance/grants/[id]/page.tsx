@@ -765,8 +765,10 @@ export default async function GrantDetailPage({
                 <GrantRestrictions
                   restrictions={grant.restrictions.map((r) => ({
                     ...r,
+                    amount: r.amount ? Number(r.amount) : null,
                     evidence: r.evidence.map((e) => ({
                       ...e,
+                      amount: e.amount ? Number(e.amount) : null,
                       createdAt: e.createdAt.toISOString(),
                     })),
                   }))}

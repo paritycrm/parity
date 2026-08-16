@@ -521,13 +521,13 @@ export async function submitToHmrc(formData: FormData) {
     donations: claim.items.map((item) => ({
       donorName: item.donorName,
       donorPostcode: item.donorPostcode || "",
-      donationAmount: item.donationAmount,
+      donationAmount: Number(item.donationAmount),
       donationDate: item.donationDate,
-      giftAidAmount: item.giftAidAmount,
+      giftAidAmount: Number(item.giftAidAmount),
     })),
-    totalDonations: claim.totalDonations,
-    totalGiftAid: claim.totalClaimable,
-    gasdsAmount: claim.gasdsAmount || undefined,
+    totalDonations: Number(claim.totalDonations),
+    totalGiftAid: Number(claim.totalClaimable),
+    gasdsAmount: claim.gasdsAmount ? Number(claim.gasdsAmount) : undefined,
   });
 
   if (claim.isTestMode) {
