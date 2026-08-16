@@ -39,7 +39,7 @@ export default async function ContactDetailPage({
           skills: { include: { skill: true } },
           hoursLogs: { orderBy: { date: "desc" as const } },
           assignments: { include: { department: true }, orderBy: { date: "desc" as const }, take: 10 },
-          trainings: { include: { course: true }, orderBy: { enrolledAt: "desc" as const } },
+          trainings: { include: { course: true }, orderBy: { createdAt: "desc" as const } },
           dbsChecks: { orderBy: { createdAt: "desc" as const } },
           drivingLicence: true,
           onboardingSteps: { orderBy: { order: "asc" as const } },
@@ -1395,9 +1395,9 @@ export default async function ContactDetailPage({
                                 "bg-gray-100 text-gray-800 text-xs"
                               }>{t.status}</Badge>
                             </td>
-                            <td className="py-3 px-2 text-gray-500">{t.enrolledAt ? formatDate(t.enrolledAt) : "—"}</td>
-                            <td className="py-3 px-2 text-gray-500">{t.completedAt ? formatDate(t.completedAt) : "—"}</td>
-                            <td className="py-3 px-2 text-gray-500">{t.expiresAt ? formatDate(t.expiresAt) : "—"}</td>
+                            <td className="py-3 px-2 text-gray-500">{t.createdAt ? formatDate(t.createdAt) : "—"}</td>
+                            <td className="py-3 px-2 text-gray-500">{t.completedDate ? formatDate(t.completedDate) : "—"}</td>
+                            <td className="py-3 px-2 text-gray-500">{t.expiryDate ? formatDate(t.expiryDate) : "—"}</td>
                           </tr>
                         ))}
                       </tbody>
