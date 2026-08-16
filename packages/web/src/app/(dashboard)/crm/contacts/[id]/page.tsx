@@ -1473,11 +1473,33 @@ export default async function ContactDetailPage({
                           <th className="text-left py-3 px-2 font-medium text-gray-500">Enrolled</th>
                           <th className="text-left py-3 px-2 font-medium text-gray-500">Completed</th>
                           <th className="text-left py-3 px-2 font-medium text-gray-500">Expires</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Renewal</th>
                           <th className="text-right py-3 px-2 font-medium text-gray-500">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {contact.volunteerProfile.trainings.map((t: any) => (
+                        {contact.volunteerProfile.trainings.map((t: any) => {
+                          // RAG status calculation
+                          let ragColor = "";
+                          let ragLabel = "";
+                          if (t.expiryDate && t.status === "COMPLETED") {
+                            const now = new Date();
+                            const expiry = new Date(t.expiryDate);
+                            const monthsLeft = (expiry.getFullYear() - now.getFullYear()) * 12 + (expiry.getMonth() - now.getMonth());
+                            const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                            const red = t.course.redMonths ?? 1;
+                            const amber = t.course.amberMonths ?? 3;
+                            if (daysLeft <= 0) {
+                              ragColor = "bg-red-500"; ragLabel = "Overdue";
+                            } else if (monthsLeft <= red) {
+                              ragColor = "bg-red-500"; ragLabel = `${daysLeft}d left`;
+                            } else if (monthsLeft <= amber) {
+                              ragColor = "bg-amber-400"; ragLabel = `${daysLeft}d left`;
+                            } else {
+                              ragColor = "bg-green-500"; ragLabel = `${daysLeft}d left`;
+                            }
+                          }
+                          return (
                           <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50">
                             <td className="py-3 px-2 font-medium text-gray-900">
                               {t.course.name}
@@ -1495,6 +1517,16 @@ export default async function ContactDetailPage({
                             <td className="py-3 px-2 text-gray-500">{t.createdAt ? formatDate(t.createdAt) : "—"}</td>
                             <td className="py-3 px-2 text-gray-500">{t.completedDate ? formatDate(t.completedDate) : "—"}</td>
                             <td className="py-3 px-2 text-gray-500">{t.expiryDate ? formatDate(t.expiryDate) : "—"}</td>
+                            <td className="py-3 px-2">
+                              {ragLabel ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700">
+                                  <span className={`h-2.5 w-2.5 rounded-full ${ragColor}`} />
+                                  {ragLabel}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-400">—</span>
+                              )}
+                            </td>
                             <td className="py-3 px-2 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 {t.status === "NOT_STARTED" && (
@@ -1527,7 +1559,8 @@ export default async function ContactDetailPage({
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

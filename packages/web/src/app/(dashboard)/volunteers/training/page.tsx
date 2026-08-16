@@ -60,13 +60,30 @@ export default async function TrainingPage() {
     }),
   ]);
 
-  const expiring1m = expiringTrainings.filter(t => t.expiryDate && t.expiryDate <= oneMonth);
-  const expiring3m = expiringTrainings.filter(t => t.expiryDate && t.expiryDate > oneMonth && t.expiryDate <= threeMonths);
-  const expiring6m = expiringTrainings.filter(t => t.expiryDate && t.expiryDate > threeMonths && t.expiryDate <= sixMonths);
-
   function daysUntilExpiry(expiryDate: Date): number {
     return Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   }
+
+  function monthsUntilExpiry(expiryDate: Date): number {
+    return (expiryDate.getFullYear() - now.getFullYear()) * 12 + (expiryDate.getMonth() - now.getMonth());
+  }
+
+  // Compute RAG status per training using the course's own thresholds
+  type RagStatus = "red" | "amber" | "green";
+  function getRag(training: { expiryDate: Date | null; course: { amberMonths: number | null; redMonths: number | null } }): RagStatus {
+    if (!training.expiryDate) return "green";
+    const months = monthsUntilExpiry(training.expiryDate);
+    const red = training.course.redMonths ?? 1;
+    const amber = training.course.amberMonths ?? 3;
+    if (months <= red) return "red";
+    if (months <= amber) return "amber";
+    return "green";
+  }
+
+  const ragTrainings = expiringTrainings.map(t => ({ ...t, rag: getRag(t) }));
+  const redTrainings = ragTrainings.filter(t => t.rag === "red");
+  const amberTrainings = ragTrainings.filter(t => t.rag === "amber");
+  const greenTrainings = ragTrainings.filter(t => t.rag === "green");
 
   async function createCourse(formData: FormData) {
     "use server";
@@ -78,6 +95,12 @@ export default async function TrainingPage() {
     const validityMonths = formData.get("validityMonths")
       ? parseInt(formData.get("validityMonths") as string)
       : null;
+    const amberMonths = formData.get("amberMonths")
+      ? parseInt(formData.get("amberMonths") as string)
+      : 3;
+    const redMonths = formData.get("redMonths")
+      ? parseInt(formData.get("redMonths") as string)
+      : 1;
 
     await prisma.trainingCourse.create({
       data: {
@@ -85,6 +108,8 @@ export default async function TrainingPage() {
         description,
         isMandatory,
         validityMonths,
+        amberMonths,
+        redMonths,
       },
     });
 
@@ -138,7 +163,7 @@ export default async function TrainingPage() {
       {/* Create form */}
       <Card className="p-4">
         <form action={createCourse} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Course Name
@@ -183,8 +208,42 @@ export default async function TrainingPage() {
                 </span>
               </label>
             </div>
-            <div className="flex items-end">
-              <Button type="submit" className="w-full">
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                  Amber warning (months before expiry)
+                </span>
+              </label>
+              <input
+                name="amberMonths"
+                type="number"
+                defaultValue="3"
+                min="1"
+                placeholder="3"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+                  Red warning (months before expiry)
+                </span>
+              </label>
+              <input
+                name="redMonths"
+                type="number"
+                defaultValue="1"
+                min="1"
+                placeholder="1"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div className="flex items-end lg:col-span-2">
+              <Button type="submit" className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" /> Add Course
               </Button>
             </div>
@@ -216,6 +275,9 @@ export default async function TrainingPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Validity
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    RAG Thresholds
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Enrolled
@@ -259,7 +321,17 @@ export default async function TrainingPage() {
                       </form>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {course.validityMonths ? `${course.validityMonths}m` : "—"}
+                      {course.validityMonths ? `${course.validityMonths} months` : "Never expires"}
+                    </td>
+                    <td className="px-6 py-4">
+                      {course.validityMonths ? (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" />{course.amberMonths ?? 3}m</span>
+                          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" />{course.redMonths ?? 1}m</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {course._count.volunteerTrainings}
@@ -283,22 +355,23 @@ export default async function TrainingPage() {
         </Card>
       )}
 
-      {/* Coming Up - Training Expiring Soon */}
-      {(expiring1m.length > 0 || expiring3m.length > 0 || expiring6m.length > 0) && (
+      {/* Coming Up - Training Expiring Soon (RAG based on per-course thresholds) */}
+      {(redTrainings.length > 0 || amberTrainings.length > 0 || greenTrainings.length > 0) && (
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Clock className="h-5 w-5 text-amber-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Coming Up</h2>
-            <span className="text-sm text-gray-500">Training certifications expiring in the next 6 months</span>
+            <h2 className="text-lg font-semibold text-gray-900">Coming Up for Renewal</h2>
+            <span className="text-sm text-gray-500">Based on each course&apos;s RAG thresholds</span>
           </div>
 
           {[
-            { label: "Within 1 Month", items: expiring1m, color: "border-l-red-500", textColor: "text-red-600" },
-            { label: "1 - 3 Months", items: expiring3m, color: "border-l-orange-500", textColor: "text-orange-600" },
-            { label: "3 - 6 Months", items: expiring6m, color: "border-l-yellow-500", textColor: "text-yellow-600" },
+            { label: "Red — Urgent", items: redTrainings, color: "border-l-red-500", textColor: "text-red-600", dotColor: "bg-red-500" },
+            { label: "Amber — Approaching", items: amberTrainings, color: "border-l-amber-400", textColor: "text-amber-600", dotColor: "bg-amber-400" },
+            { label: "Green — Upcoming", items: greenTrainings, color: "border-l-green-500", textColor: "text-green-600", dotColor: "bg-green-500" },
           ].map(group => group.items.length > 0 && (
             <div key={group.label} className="mb-4 last:mb-0">
-              <h3 className={`text-sm font-semibold ${group.textColor} mb-2`}>
+              <h3 className={`text-sm font-semibold ${group.textColor} mb-2 flex items-center gap-1.5`}>
+                <span className={`h-2.5 w-2.5 rounded-full ${group.dotColor}`} />
                 {group.label} ({group.items.length})
               </h3>
               <div className={`border-l-4 ${group.color} bg-gray-50 rounded-r-lg overflow-hidden`}>
@@ -322,12 +395,16 @@ export default async function TrainingPage() {
                         </td>
                         <td className="px-4 py-2 text-gray-700">{training.course.name}</td>
                         <td className="px-4 py-2 text-gray-500">
-                          {training.completedDate ? formatDate(training.completedDate) : "---"}
+                          {training.completedDate ? formatDate(training.completedDate) : "—"}
                         </td>
-                        <td className="px-4 py-2">{training.expiryDate ? formatDate(training.expiryDate) : "---"}</td>
+                        <td className="px-4 py-2">{training.expiryDate ? formatDate(training.expiryDate) : "—"}</td>
                         <td className="px-4 py-2">
                           {training.expiryDate && (
-                            <Badge className={daysUntilExpiry(training.expiryDate) <= 30 ? "bg-red-100 text-red-800" : daysUntilExpiry(training.expiryDate) <= 90 ? "bg-orange-100 text-orange-800" : "bg-yellow-100 text-yellow-800"}>
+                            <Badge className={
+                              training.rag === "red" ? "bg-red-100 text-red-800" :
+                              training.rag === "amber" ? "bg-amber-100 text-amber-800" :
+                              "bg-green-100 text-green-800"
+                            }>
                               {daysUntilExpiry(training.expiryDate)}d
                             </Badge>
                           )}
