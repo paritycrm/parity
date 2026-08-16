@@ -37,10 +37,12 @@ export default async function ContactDetailPage({
         include: {
           departments: { include: { department: true } },
           skills: { include: { skill: true } },
-          hoursLogs: { orderBy: { date: "desc" as const }, take: 5 },
-          assignments: { include: { department: true }, orderBy: { date: "desc" as const }, take: 5 },
-          trainings: { include: { course: true } },
-          dbsChecks: { orderBy: { createdAt: "desc" as const }, take: 1 },
+          hoursLogs: { orderBy: { date: "desc" as const } },
+          assignments: { include: { department: true }, orderBy: { date: "desc" as const }, take: 10 },
+          trainings: { include: { course: true }, orderBy: { enrolledAt: "desc" as const } },
+          dbsChecks: { orderBy: { createdAt: "desc" as const } },
+          drivingLicence: true,
+          onboardingSteps: { orderBy: { order: "asc" as const } },
         },
       },
       giftAids: { orderBy: { createdAt: "desc" }, take: 5 },
@@ -245,6 +247,28 @@ export default async function ContactDetailPage({
         status: "ACTIVE",
       },
     });
+    revalidatePath(`/crm/contacts/${id}`);
+    redirect(`/crm/contacts/${id}`);
+  }
+
+  async function updateVolunteerProfile(formData: FormData) {
+    "use server";
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const motivation = (formData.get("motivation") as string) || null;
+    const status = (formData.get("volunteerStatus") as string) || "ACTIVE";
+    const startDate = (formData.get("startDate") as string) || null;
+    const desiredHoursPerWeek = formData.get("desiredHoursPerWeek") ? parseFloat(formData.get("desiredHoursPerWeek") as string) : null;
+
+    const profile = await prisma.volunteerProfile.findUnique({ where: { contactId: id } });
+    if (!profile) return;
+
+    await prisma.volunteerProfile.update({
+      where: { id: profile.id },
+      data: { motivation, status, startDate, desiredHoursPerWeek },
+    });
+    await logAudit({ userId: session.id, action: "UPDATE", entityType: "VolunteerProfile", entityId: profile.id, details: { motivation, status } });
     revalidatePath(`/crm/contacts/${id}`);
     redirect(`/crm/contacts/${id}`);
   }
@@ -1246,95 +1270,73 @@ export default async function ContactDetailPage({
         </CardContent>
       </Card>
 
-      {/* Volunteer Summary -- inline when profile exists */}
-      {contact.volunteerProfile && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Volunteer Profile</h3>
-                <Badge className={
-                  contact.volunteerProfile.status === "ACTIVE" ? "bg-green-100 text-green-800" :
-                  contact.volunteerProfile.status === "APPLICANT" ? "bg-blue-100 text-blue-800" :
-                  contact.volunteerProfile.status === "INACTIVE" ? "bg-gray-100 text-gray-800" :
-                  contact.volunteerProfile.status === "ON_LEAVE" ? "bg-amber-100 text-amber-800" :
-                  contact.volunteerProfile.status === "DEPARTED" ? "bg-red-100 text-red-800" :
-                  "bg-gray-100 text-gray-800"
-                }>{contact.volunteerProfile.status}</Badge>
-              </div>
-              <Badge className="bg-indigo-100 text-indigo-800 text-xs">
-                Volunteer
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Departments */}
-              {contact.volunteerProfile.departments.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Departments</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {contact.volunteerProfile.departments.map((vd: any) => (
-                      <Badge key={vd.department.id} variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
-                        {vd.department.name}
-                      </Badge>
-                    ))}
+      {/* Tabbed content */}
+      <ContactTabs
+        overviewContent={overviewContent}
+        activityContent={activityContent}
+        donationsContent={donationsContent}
+        interactionCount={contact.interactions.length}
+        noteCount={contact.notes.length}
+        donationCount={contact.donations.length}
+        isVolunteer={!!contact.volunteerProfile}
+        trainingCount={contact.volunteerProfile?.trainings.length ?? 0}
+        hoursCount={contact.volunteerProfile?.hoursLogs.length ?? 0}
+        volunteerContent={contact.volunteerProfile ? (
+          <div className="space-y-6">
+            {/* Volunteer Info & Why */}
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-gray-900">Volunteer Details</h3>
+              </CardHeader>
+              <CardContent>
+                <form action={updateVolunteerProfile} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <select name="volunteerStatus" defaultValue={contact.volunteerProfile.status} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                        <option value="APPLICANT">Applicant</option>
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                        <option value="ON_LEAVE">On Leave</option>
+                        <option value="DEPARTED">Departed</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                      <Input name="startDate" type="date" defaultValue={contact.volunteerProfile.startDate || ""} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Desired Hours / Week</label>
+                      <Input name="desiredHoursPerWeek" type="number" step="0.5" defaultValue={contact.volunteerProfile.desiredHoursPerWeek ?? ""} />
+                    </div>
                   </div>
-                </div>
-              )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Why do you volunteer? <span className="text-gray-400 font-normal">(Their personal motivation)</span></label>
+                    <Textarea name="motivation" rows={3} defaultValue={contact.volunteerProfile.motivation || ""} placeholder="e.g. My father was cared for by the hospice and I want to give back..." />
+                  </div>
+                  <Button type="submit">Update Volunteer Profile</Button>
+                </form>
+              </CardContent>
+            </Card>
 
-              {/* Skills */}
-              {contact.volunteerProfile.skills.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Award className="h-3.5 w-3.5 text-gray-400" />
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Skills</p>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {contact.volunteerProfile.skills.map((vs: any) => (
-                      <Badge key={vs.skill.id} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                        {vs.skill.name}
-                        {vs.proficiency && (
-                          <span className="ml-1 text-purple-400 font-normal">({vs.proficiency})</span>
-                        )}
-                      </Badge>
-                    ))}
-                  </div>
+            {/* Recent Assignments */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-indigo-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Recent Assignments</h3>
                 </div>
-              )}
-
-              {/* Hours summary */}
-              {contact.volunteerProfile.hoursLogs.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Clock className="h-3.5 w-3.5 text-gray-400" />
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Volunteer Hours</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl font-bold text-gray-900">
-                      {contact.volunteerProfile.hoursLogs.reduce((sum: number, log: any) => sum + Number(log.hours), 0).toFixed(1)}
-                    </span>
-                    <span className="text-sm text-gray-500">total hours (recent {contact.volunteerProfile.hoursLogs.length} logs)</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Recent assignments */}
-              {contact.volunteerProfile.assignments.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Recent Assignments</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    {contact.volunteerProfile.assignments.slice(0, 3).map((a: any) => (
-                      <div key={a.id} className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded">
+              </CardHeader>
+              <CardContent>
+                {contact.volunteerProfile.assignments.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No assignments yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {contact.volunteerProfile.assignments.map((a: any) => (
+                      <div key={a.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-sm font-medium text-gray-900 truncate">{a.title}</span>
-                          {a.department && (
-                            <Badge variant="outline" className="text-xs shrink-0">{a.department.name}</Badge>
-                          )}
+                          {a.department && <Badge variant="outline" className="text-xs shrink-0">{a.department.name}</Badge>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-xs text-gray-500">{formatDate(a.date)}</span>
@@ -1348,74 +1350,285 @@ export default async function ContactDetailPage({
                       </div>
                     ))}
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : undefined}
+        trainingContent={contact.volunteerProfile ? (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Training Courses</h3>
+                  <span className="text-sm text-gray-500">{contact.volunteerProfile.trainings.length} course{contact.volunteerProfile.trainings.length !== 1 ? "s" : ""}</span>
                 </div>
-              )}
-
-              {/* Training */}
-              {contact.volunteerProfile.trainings.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <BookOpen className="h-3.5 w-3.5 text-gray-400" />
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Training</p>
+              </CardHeader>
+              <CardContent>
+                {contact.volunteerProfile.trainings.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-8">No training courses assigned.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Course</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Status</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Enrolled</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Completed</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Expires</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contact.volunteerProfile.trainings.map((t: any) => (
+                          <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-3 px-2 font-medium text-gray-900">
+                              {t.course.name}
+                              {t.course.isMandatory && <Badge className="ml-2 bg-red-50 text-red-700 text-xs">Mandatory</Badge>}
+                            </td>
+                            <td className="py-3 px-2">
+                              <Badge className={
+                                t.status === "COMPLETED" ? "bg-green-100 text-green-800 text-xs" :
+                                t.status === "IN_PROGRESS" ? "bg-blue-100 text-blue-800 text-xs" :
+                                t.status === "NOT_STARTED" ? "bg-gray-100 text-gray-800 text-xs" :
+                                t.status === "EXPIRED" ? "bg-red-100 text-red-800 text-xs" :
+                                "bg-gray-100 text-gray-800 text-xs"
+                              }>{t.status}</Badge>
+                            </td>
+                            <td className="py-3 px-2 text-gray-500">{t.enrolledAt ? formatDate(t.enrolledAt) : "—"}</td>
+                            <td className="py-3 px-2 text-gray-500">{t.completedAt ? formatDate(t.completedAt) : "—"}</td>
+                            <td className="py-3 px-2 text-gray-500">{t.expiresAt ? formatDate(t.expiresAt) : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {contact.volunteerProfile.trainings.map((t: any) => (
-                      <div key={t.id} className="flex items-center gap-1.5">
-                        <span className="text-sm text-gray-700">{t.course.name}</span>
-                        <Badge className={
-                          t.status === "COMPLETED" ? "bg-green-100 text-green-800 text-xs" :
-                          t.status === "IN_PROGRESS" ? "bg-blue-100 text-blue-800 text-xs" :
-                          t.status === "NOT_STARTED" ? "bg-gray-100 text-gray-800 text-xs" :
-                          t.status === "EXPIRED" ? "bg-red-100 text-red-800 text-xs" :
-                          "bg-gray-100 text-gray-800 text-xs"
-                        }>{t.status}</Badge>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : undefined}
+        hoursContent={contact.volunteerProfile ? (
+          <div className="space-y-6">
+            {/* Total summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-2xl font-bold text-gray-900">
+                    {contact.volunteerProfile.hoursLogs.reduce((sum: number, log: any) => sum + Number(log.hours), 0).toFixed(1)}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">Total Hours</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-2xl font-bold text-gray-900">{contact.volunteerProfile.hoursLogs.length}</p>
+                  <p className="text-sm text-gray-500 mt-1">Log Entries</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-2xl font-bold text-gray-900">
+                    {contact.volunteerProfile.hoursLogs.length > 0
+                      ? (contact.volunteerProfile.hoursLogs.reduce((sum: number, log: any) => sum + Number(log.hours), 0) / contact.volunteerProfile.hoursLogs.length).toFixed(1)
+                      : "0"}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">Avg Hours / Entry</p>
+                </CardContent>
+              </Card>
+            </div>
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-gray-900">Hours Log</h3>
+              </CardHeader>
+              <CardContent>
+                {contact.volunteerProfile.hoursLogs.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-8">No hours logged yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Date</th>
+                          <th className="text-right py-3 px-2 font-medium text-gray-500">Hours</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contact.volunteerProfile.hoursLogs.map((log: any) => (
+                          <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-3 px-2 text-gray-900">{formatDate(log.date)}</td>
+                            <td className="py-3 px-2 text-right font-semibold text-gray-900">{Number(log.hours).toFixed(1)}</td>
+                            <td className="py-3 px-2 text-gray-600">{log.description || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : undefined}
+        skillsDeptContent={contact.volunteerProfile ? (
+          <div className="space-y-6">
+            {/* Departments */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-indigo-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Departments</h3>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {contact.volunteerProfile.departments.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">Not assigned to any departments.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {contact.volunteerProfile.departments.map((vd: any) => (
+                      <Badge key={vd.department.id} className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 text-sm">
+                        {vd.department.name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            {/* Skills */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-purple-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Skills</h3>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {contact.volunteerProfile.skills.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No skills assigned.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {contact.volunteerProfile.skills.map((vs: any) => (
+                      <div key={vs.skill.id} className="flex items-center justify-between py-2 px-3 bg-purple-50 rounded-lg">
+                        <span className="text-sm font-medium text-gray-900">{vs.skill.name}</span>
+                        {vs.proficiency && <Badge variant="outline" className="text-xs">{vs.proficiency}</Badge>}
                       </div>
                     ))}
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : undefined}
+        complianceContent={contact.volunteerProfile ? (
+          <div className="space-y-6">
+            {/* DBS Checks */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-green-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">DBS Checks</h3>
                 </div>
-              )}
-
-              {/* DBS Check */}
-              {contact.volunteerProfile.dbsChecks.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Shield className="h-3.5 w-3.5 text-gray-400" />
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">DBS Check</p>
+              </CardHeader>
+              <CardContent>
+                {contact.volunteerProfile.dbsChecks.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No DBS checks on record.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Check Date</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Level</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Status</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Certificate</th>
+                          <th className="text-left py-3 px-2 font-medium text-gray-500">Expiry</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contact.volunteerProfile.dbsChecks.map((dbs: any) => (
+                          <tr key={dbs.id} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-3 px-2 text-gray-900">{formatDate(dbs.checkDate)}</td>
+                            <td className="py-3 px-2"><Badge variant="outline" className="text-xs">{dbs.level}</Badge></td>
+                            <td className="py-3 px-2">
+                              <Badge className={
+                                dbs.status === "CLEARED" ? "bg-green-100 text-green-800 text-xs" :
+                                dbs.status === "PENDING" ? "bg-yellow-100 text-yellow-800 text-xs" :
+                                dbs.status === "EXPIRED" ? "bg-red-100 text-red-800 text-xs" :
+                                "bg-gray-100 text-gray-800 text-xs"
+                              }>{dbs.status}</Badge>
+                            </td>
+                            <td className="py-3 px-2 font-mono text-xs text-gray-500">{dbs.certificateNumber || "—"}</td>
+                            <td className="py-3 px-2 text-gray-500">{dbs.expiryDate ? formatDate(dbs.expiryDate) : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  {(() => {
-                    const dbs = contact.volunteerProfile.dbsChecks[0];
-                    return (
-                      <div className="flex items-center gap-3">
-                        <Badge className={
-                          dbs.status === "CLEAR" ? "bg-green-100 text-green-800" :
-                          dbs.status === "PENDING" ? "bg-yellow-100 text-yellow-800" :
-                          dbs.status === "EXPIRED" ? "bg-red-100 text-red-800" :
-                          "bg-gray-100 text-gray-800"
-                        }>{dbs.status}</Badge>
-                        {dbs.expiryDate && (
-                          <span className="text-sm text-gray-500">Expires: {formatDate(dbs.expiryDate)}</span>
+                )}
+              </CardContent>
+            </Card>
+            {/* Driving Licence */}
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-gray-900">Driving Licence</h3>
+              </CardHeader>
+              <CardContent>
+                {!contact.volunteerProfile.drivingLicence ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No driving licence on file.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Licence Number</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{contact.volunteerProfile.drivingLicence.licenceNumber || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Expiry Date</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">
+                        {contact.volunteerProfile.drivingLicence.expiryDate ? formatDate(contact.volunteerProfile.drivingLicence.expiryDate) : "—"}
+                        {contact.volunteerProfile.drivingLicence.expiryDate && new Date(contact.volunteerProfile.drivingLicence.expiryDate) < new Date() && (
+                          <Badge className="ml-2 bg-red-100 text-red-800 text-xs">Expired</Badge>
                         )}
-                        {dbs.certificateNumber && (
-                          <span className="text-xs text-gray-400 font-mono">#{dbs.certificateNumber}</span>
-                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Categories</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{contact.volunteerProfile.drivingLicence.categories || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Verified</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">
+                        {contact.volunteerProfile.drivingLicence.verifiedAt
+                          ? formatDate(contact.volunteerProfile.drivingLicence.verifiedAt)
+                          : <Badge className="bg-yellow-100 text-yellow-800 text-xs">Not Verified</Badge>}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            {/* Onboarding Steps */}
+            {contact.volunteerProfile.onboardingSteps.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <h3 className="text-lg font-semibold text-gray-900">Onboarding Progress</h3>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {contact.volunteerProfile.onboardingSteps.map((step: any) => (
+                      <div key={step.id} className="flex items-center gap-3 py-2">
+                        <div className={`h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${step.completedAt ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+                          {step.completedAt ? "✓" : step.order}
+                        </div>
+                        <span className={`text-sm ${step.completedAt ? "text-gray-900" : "text-gray-500"}`}>{step.name}</span>
+                        {step.completedAt && <span className="text-xs text-gray-400 ml-auto">{formatDate(step.completedAt)}</span>}
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tabbed content */}
-      <ContactTabs
-        overviewContent={overviewContent}
-        activityContent={activityContent}
-        donationsContent={donationsContent}
-        interactionCount={contact.interactions.length}
-        noteCount={contact.notes.length}
-        donationCount={contact.donations.length}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : undefined}
       />
     </div>
   );

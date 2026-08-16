@@ -46,6 +46,8 @@ import {
   MessageCircle,
   Wallet,
   FileSpreadsheet,
+  Car,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -109,12 +111,23 @@ const sections: NavSection[] = [
       { name: "Organisations", href: "/crm/organisations", icon: Building2 },
       { name: "Segments", href: "/crm/segments", icon: Zap },
       { name: "Duplicates", href: "/crm/duplicates", icon: Merge },
-      { name: "Volunteers", href: "/volunteers", icon: UserCheck },
+      { name: "Broadcasts", href: "/broadcasts", icon: Radio },
+    ],
+  },
+
+  // ─── Volunteer Admin ───
+  {
+    label: "Volunteer Admin",
+    icon: UserCheck,
+    roles: ALL_STAFF,
+    items: [
       { name: "Hours", href: "/volunteers/hours", icon: Clock },
       { name: "Training", href: "/volunteers/training", icon: GraduationCap },
+      { name: "DBS Checks", href: "/volunteers/dbs", icon: Shield },
+      { name: "Licences", href: "/volunteers/licences", icon: Car },
       { name: "Departments", href: "/volunteers/departments", icon: Building2 },
       { name: "Skills", href: "/volunteers/skills", icon: Wrench },
-      { name: "Broadcasts", href: "/broadcasts", icon: Radio },
+      { name: "Onboarding", href: "/volunteers/onboarding", icon: ClipboardList },
     ],
   },
 
