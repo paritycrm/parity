@@ -253,6 +253,7 @@ model Contact {
   isArchived             Boolean   @default(false)
   archivedAt             DateTime?
   dateOfBirth            String?
+  whyImportant           String? // free-format: why the hospice matters to them
   createdById            String
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt

@@ -466,6 +466,18 @@ export default async function ContactDetailPage({
     redirect(`/crm/contacts/${id}`);
   }
 
+  async function updateWhyImportant(formData: FormData) {
+    "use server";
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const whyImportant = (formData.get("whyImportant") as string)?.trim() || null;
+    await prisma.contact.update({ where: { id }, data: { whyImportant } });
+    await logAudit({ userId: session.id, action: "UPDATE", entityType: "Contact", entityId: id, details: { whyImportant: whyImportant ? "updated" : "cleared" } });
+    revalidatePath(`/crm/contacts/${id}`);
+    redirect(`/crm/contacts/${id}`);
+  }
+
   // -- Computed values --
 
   const lifetimeDonationTotal = contact.donations.reduce((sum, d) => sum + Number(d.amount), 0);
@@ -1341,6 +1353,34 @@ export default async function ContactDetailPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* "Their Why" banner — shown for volunteers and donors */}
+      {(contact.types.includes("VOLUNTEER") || contact.types.includes("DONOR")) && (
+        <Card className="border-l-4 border-l-teal-500 bg-teal-50/30">
+          <CardContent className="py-4">
+            <form action={updateWhyImportant}>
+              <div className="flex items-start gap-3">
+                <Heart className="h-5 w-5 text-teal-600 mt-1 shrink-0" />
+                <div className="flex-1">
+                  <label className="block text-sm font-semibold text-teal-800 mb-1">
+                    Their Why <span className="font-normal text-teal-600">— why is the hospice important to them?</span>
+                  </label>
+                  <textarea
+                    name="whyImportant"
+                    rows={2}
+                    defaultValue={contact.whyImportant || ""}
+                    placeholder="e.g. My father was cared for by the hospice and I want to give something back..."
+                    className="w-full rounded-md border border-teal-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+                  />
+                </div>
+                <button type="submit" className="shrink-0 mt-6 rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 transition-colors">
+                  Save
+                </button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabbed content */}
       <ContactTabs
